@@ -62,7 +62,7 @@
  	}
  	
  	
- 	if (isset($exemptState)&&$isValid&&isset($purchaserFirstName)&&isset($purchaserLastName)&&isset($purchaserAddress1)
+ 	if (isset($exemptState)&&$isValid&&isset($purchaserFirstName)&&isset($purchaserAddress1)
  		&&isset($purchaserCity)&&isset($purchaserState)&&isset($purchaserZip)&&isset($taxType)&&isset($idNumber)&&isset($stateOfIssue)&&isset($purchaserBusinessType)
  		&&isset($purchaserExemptionReason)&&isset($purchaserExemptionReasonValue)) {
  		
