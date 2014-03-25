@@ -210,7 +210,7 @@
 <tr>
 	<td>
 		<a href="#dialog" name="modal">
-		<img src="http://taxcloud.net/imgs/cert/exemption_certificate150x120.png">
+		<img src="//taxcloud.net/imgs/cert/exemption_certificate150x120.png">
 		</a>
 	</td>
 	<td>
