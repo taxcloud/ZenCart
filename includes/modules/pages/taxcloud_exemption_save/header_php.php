@@ -46,19 +46,19 @@
  	if ( $singlePurchase == 'on' ) {
  		if ( $blanketPurchase == 'on' ) {
  			$isValid = false;
- 			echo("not valid - both on");
+ 			echo("Invalid Exemption Certificate - An Exemption Certificate cannot be a Single Use AND a Blanket (Multiple Use) Certificate.");
  		} else if (!isset($singlePurchaseOrderNumber)) {
  			$isValid = false;
- 			echo("not valid - no single purchase number");
+ 			echo("Invalid Exemption Certificate - Purchase Order Required for Single Use Exemption Certificates.");
  		} else {
  			$isValid = true;
  		}
  	} else if ($blanketPurchase == 'on') {
  		$isValid = true;
- 		echo("valid");
+ 		//echo("valid");
  	} else {
  		$isValid = false;
- 		echo("not valid - neither on");
+ 		//echo("not valid - neither on");
  	}
  	
  	
@@ -70,7 +70,37 @@
  		$taxcloudExemption->saveCert($exemptState,$singlePurchase,$singlePurchaseOrderNumber,$purchaserFirstName,$purchaserLastName,$purchaserAddress1,$purchaserCity,$purchaserState,$purchaserZip,$taxType,$idNumber,
  			$stateOfIssue,$countryOfIssue,$purchaserBusinessType,$purchaserBusinessTypeOtherValue,$purchaserExemptionReason,$purchaserExemptionReasonValue,$customerID);
  	} else {
- 		echo(' not all parameters set'); 
+ 		echo('Invalid Exemption Certificate.');
+ 		if(!isset($exemptState)){
+ 			echo('Missing Exemption State')
+ 		}
+ 		if(!isset($purchaserFirstName)){
+ 			echo('Missing Exemption Claimant Name')
+ 		}
+ 		if(!isset($purchaserAddress1)){
+ 			echo('Missing Exemption Claimant Street Address')
+ 		}
+ 		if(!isset($purchaserCity)){
+ 			echo('Missing Exemption Claimant Address City')
+ 		}
+ 		if(!isset($purchaserCity)){
+ 			echo('Missing Exemption Claimant Address State')
+ 		}
+ 		if(!isset($purchaserZip)){
+ 			echo('Missing Exemption Claimant Address Zip Code')
+ 		}
+ 		if(!isset($taxType)){
+ 			echo('Missing Exemption ID Type')
+ 		}
+ 		if(!isset($idNumber)){
+ 			echo('Missing Exemption ID Number')
+ 		}
+ 		if(!isset($purchaserBusinessType)){
+ 			echo('Missing Business Type')
+ 		}
+ 		if(!isset($purchaserExemptionReason)){
+ 			echo('Missing Exemption Reason')
+ 		}
  	}
  	
  	class taxcloudExemption { 
