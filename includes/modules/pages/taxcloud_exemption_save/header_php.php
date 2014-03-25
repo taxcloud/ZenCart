@@ -72,34 +72,34 @@
  	} else {
  		echo('Invalid Exemption Certificate.');
  		if(!isset($exemptState)){
- 			echo('Missing Exemption State')
+ 			echo('Missing Exemption State');
  		}
  		if(!isset($purchaserFirstName)){
- 			echo('Missing Exemption Claimant Name')
+ 			echo('Missing Exemption Claimant Name');
  		}
  		if(!isset($purchaserAddress1)){
- 			echo('Missing Exemption Claimant Street Address')
+ 			echo('Missing Exemption Claimant Street Address');
  		}
  		if(!isset($purchaserCity)){
- 			echo('Missing Exemption Claimant Address City')
+ 			echo('Missing Exemption Claimant Address City');
  		}
  		if(!isset($purchaserCity)){
- 			echo('Missing Exemption Claimant Address State')
+ 			echo('Missing Exemption Claimant Address State');
  		}
  		if(!isset($purchaserZip)){
- 			echo('Missing Exemption Claimant Address Zip Code')
+ 			echo('Missing Exemption Claimant Address Zip Code');
  		}
  		if(!isset($taxType)){
- 			echo('Missing Exemption ID Type')
+ 			echo('Missing Exemption ID Type');
  		}
  		if(!isset($idNumber)){
- 			echo('Missing Exemption ID Number')
+ 			echo('Missing Exemption ID Number');
  		}
  		if(!isset($purchaserBusinessType)){
- 			echo('Missing Business Type')
+ 			echo('Missing Business Type');
  		}
  		if(!isset($purchaserExemptionReason)){
- 			echo('Missing Exemption Reason')
+ 			echo('Missing Exemption Reason');
  		}
  	}
  	
