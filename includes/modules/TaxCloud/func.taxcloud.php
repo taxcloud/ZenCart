@@ -420,7 +420,7 @@ function func_taxcloud_return_order($order_id) {
 	global $db;
 	
 	$results = $db->Execute("select products_id, products_quantity, final_price
-	                             from " . TABLE_ORDERS_PRODUCTS . "
+	                     from " . TABLE_ORDERS_PRODUCTS . "
                              where orders_id = '" . (int)$order_id . "'");
         
 	$cartItems = Array();
@@ -438,6 +438,29 @@ function func_taxcloud_return_order($order_id) {
 		$cartItem->setQty($fields['products_quantity']);
 		$cartItems[$index] = $cartItem;
       		
+      		$index++;
+      		$results->MoveNext();
+      		
+        }
+        
+        //Reverse the order shipping
+	$results = $db->Execute("select value
+	                        from " . TABLE_ORDERS_TOTAL . "
+                                where orders_id = '" . (int)$order_id . "'
+                                and class = 'ot_shipping'");
+        
+        while ( !$results->EOF ) {
+        	$fields = $results->fields;
+      		
+		//Shipping as a cart item
+		$cartItem = new CartItem();
+		$cartItem->setItemID('shipping');
+		$cartItem->setIndex($index);
+		$cartItem->setTIC(11010);
+		$cartItem->setPrice($fields['value']);
+		$cartItem->setQty(1);
+		$cartItems[$index] = $cartItem;	
+               
       		$index++;
       		$results->MoveNext();
       		
