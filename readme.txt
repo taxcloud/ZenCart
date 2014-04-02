@@ -60,7 +60,7 @@ We also provide support for Exemption Certificates. If the customer qualifies fo
 9	Coupons
 Zen Cart includes a built-in module for managing coupons. Unfortunately this module does not interact with TaxCloud correctly. So instead, we have provided a custom Discount Coupon module that replaces the standard one. If you are planning to use discount coupons on your site, you need to disable the standard Discount Coupon module in the Zen Cart admin console by going to Modules > Order Total. Then, select the TaxCloud version of Discount Coupon, and click the “Install” button.
  
---------------------------------------------------
+---------------------------------------------------
 Provided by The Federal Tax Authority (FedTax.net)
 
 This code is released under the GNU GENERAL PUBLIC LICENSE (see license.txt)
