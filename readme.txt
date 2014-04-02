@@ -7,11 +7,13 @@ After a customer has entered a shipping address during checkout, Zen Cart sends 
 
 2	Preparation
 Here’s what you’ll need:
+<li>
 -	A TaxCloud account. Register at taxcloud.com. Log in to your account and enter your office address, website URL, and the states where you want to collect sales tax. 
 -	TaxCloud API ID and API Key. These can be found in your TaxCloud account on the “Websites” page. If the website you want to use TaxCloud with isn’t listed, just click “Add website” and enter the information when prompted. The API ID and Key for that website will be assigned automatically. Please do not share them with anyone or use them for multiple URLs.
 -	PHP version 5.0 or above. Most servers have a phpInfo file that displays this information.
 -	SOAP and cUrl enabled. Again, the phpInfo file displays this information.
 -	A USPS Web Tools Username. This allows TaxCloud to verify the customer’s address and obtain the 9-digit zip code. To get a USPS Web Tools Username, fill out the form at https://secure.shippingapis.com/registration/—your USPS Web Tools Username will be emailed to you. 
+</li>
 
 3	Installation
 Click "Download ZIP" to get the TaxCloud module. Be sure to back up your Zen Cart installation before you start making changes. Disable and remove any other sales tax modules before installing TaxCloud.
@@ -60,7 +62,7 @@ We also provide support for Exemption Certificates. If the customer qualifies fo
 9	Coupons
 Zen Cart includes a built-in module for managing coupons. Unfortunately this module does not interact with TaxCloud correctly. So instead, we have provided a custom Discount Coupon module that replaces the standard one. If you are planning to use discount coupons on your site, you need to disable the standard Discount Coupon module in the Zen Cart admin console by going to Modules > Order Total. Then, select the TaxCloud version of Discount Coupon, and click the “Install” button.
  
-
+--------------------------------------------------
 Provided by The Federal Tax Authority (FedTax.net)
 
 This code is released under the GNU GENERAL PUBLIC LICENSE (see license.txt)
@@ -72,13 +74,3 @@ This program is free software: you can redistribute it and/or modify it under th
 This program is distributed in the hope that it will be useful, on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, AND FEDTAX  HEREBY DISCLAIMS ALL SUCH WARRANTIES, INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.	 See the GNU GENERAL PUBLIC LICENSE for more details.
 
 Please see the GNU GENERAL PUBLIC LICENSE  for the specific language governing rights and limitations under the License.
-
-TaxCloud is a free, web-scale sales tax calculation service designed to support all Internet merchants.
-
-This module code allows merchants using Zen Cart to quickly incorporate TaxCloud web services.
-
-Requires PHP 5.0 - relies on the SOAPClient client. 
-
-You will need to create a merchant account at https://taxcloud.net/ to get an apiLoginID and apiKey which is required for each web service call.
-
-For the VerifyAddress service you will need a USPS userID (this is required for this implementation).
