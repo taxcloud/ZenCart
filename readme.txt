@@ -7,13 +7,11 @@ After a customer has entered a shipping address during checkout, Zen Cart sends 
 
 2	Preparation
 Here’s what you’ll need:
-<li>
 -	A TaxCloud account. Register at taxcloud.com. Log in to your account and enter your office address, website URL, and the states where you want to collect sales tax. 
 -	TaxCloud API ID and API Key. These can be found in your TaxCloud account on the “Websites” page. If the website you want to use TaxCloud with isn’t listed, just click “Add website” and enter the information when prompted. The API ID and Key for that website will be assigned automatically. Please do not share them with anyone or use them for multiple URLs.
 -	PHP version 5.0 or above. Most servers have a phpInfo file that displays this information.
 -	SOAP and cUrl enabled. Again, the phpInfo file displays this information.
 -	A USPS Web Tools Username. This allows TaxCloud to verify the customer’s address and obtain the 9-digit zip code. To get a USPS Web Tools Username, fill out the form at https://secure.shippingapis.com/registration/—your USPS Web Tools Username will be emailed to you. 
-</li>
 
 3	Installation
 Click "Download ZIP" to get the TaxCloud module. Be sure to back up your Zen Cart installation before you start making changes. Disable and remove any other sales tax modules before installing TaxCloud.
