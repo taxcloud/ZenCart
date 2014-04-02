@@ -7,11 +7,11 @@ After a customer has entered a shipping address during checkout, Zen Cart sends 
 
 2	Preparation
 Here’s what you’ll need:
--	A TaxCloud account. Register at taxcloud.com. Log in to your account and enter your office address, website URL, and the states where you want to collect sales tax. 
--	TaxCloud API ID and API Key. These can be found in your TaxCloud account on the “Websites” page. If the website you want to use TaxCloud with isn’t listed, just click “Add website” and enter the information when prompted. The API ID and Key for that website will be assigned automatically. Please do not share them with anyone or use them for multiple URLs.
--	PHP version 5.0 or above. Most servers have a phpInfo file that displays this information.
--	SOAP and cUrl enabled. Again, the phpInfo file displays this information.
--	A USPS Web Tools Username. This allows TaxCloud to verify the customer’s address and obtain the 9-digit zip code. To get a USPS Web Tools Username, fill out the form at https://secure.shippingapis.com/registration/—your USPS Web Tools Username will be emailed to you. 
+	-	A TaxCloud account. Register at taxcloud.com. Log in to your account and enter your office address, website URL, and the states where you want to collect sales tax. 
+	-	TaxCloud API ID and API Key. These can be found in your TaxCloud account on the “Websites” page. If the website you want to use TaxCloud with isn’t listed, just click “Add website” and enter the information when prompted. The API ID and Key for that website will be assigned automatically. Please do not share them with anyone or use them for multiple URLs.
+	-	PHP version 5.0 or above. Most servers have a phpInfo file that displays this information.
+	-	SOAP and cUrl enabled. Again, the phpInfo file displays this information.
+	-	A USPS Web Tools Username. This allows TaxCloud to verify the customer’s address and obtain the 9-digit zip code. To get a USPS Web Tools Username, fill out the form at https://secure.shippingapis.com/registration/—your USPS Web Tools Username will be emailed to you. 
 
 3	Installation
 Click "Download ZIP" to get the TaxCloud module. Be sure to back up your Zen Cart installation before you start making changes. Disable and remove any other sales tax modules before installing TaxCloud.
@@ -22,12 +22,12 @@ Unzip TaxCloud files and upload them into the corresponding folders under the Ze
 Once the module is installed, log in to Zen Cart and navigate to Locations/Taxes > TaxCloud Tax Calculation. Select this menu item to go to the TaxCloud administration page.
 
 Click “Update” to configure your TaxCloud settings as follows:
--	API ID: Enter the API ID for your website (see Section 2, Preparation).
--	API Key: Enter the API Key for your website (see Section 2, Preparation).
--	USPS ID: Enter your USPS Web Tools Username (see Section 2, Preparation).
--	Store Street Address: Enter ONLY the first line of your business’s street address—for example, “100 Front Street.”
--	Store Zip Code: Enter your business’s 5-digit zip code. 
--	TaxCloud enabled: Check this box to enable TaxCloud tax lookups. If you later need to disable TaxCloud for any reason, simply uncheck this box.
+	-	API ID: Enter the API ID for your website (see Section 2, Preparation).
+	-	API Key: Enter the API Key for your website (see Section 2, Preparation).
+	-	USPS ID: Enter your USPS Web Tools Username (see Section 2, Preparation).
+	-	Store Street Address: Enter ONLY the first line of your business’s street address—for example, “100 Front Street.”
+	-	Store Zip Code: Enter your business’s 5-digit zip code. 
+	-	TaxCloud enabled: Check this box to enable TaxCloud tax lookups. If you later need to disable TaxCloud for any reason, simply uncheck this box.
 
 Once you’ve entered this information, you should see this message “Server is configured to reach TaxCloud”.
 
@@ -35,16 +35,16 @@ Once you’ve entered this information, you should see this message “Server is
 Each item in your store needs to be assigned a taxability information code or TIC, so TaxCloud can determine whether or not that item is taxed in your customer’s state. These are stored in ZenCart using the “Tax Classes” section. You should set up at least the General Goods and Services tax class, TIC 00000, which is used to designate items that are taxable in every state. For the complete list of TICs, log in to TaxCloud and go to the “Taxability Codes” section.
 
 To add a new tax class/TIC:
-1.	Go to Locations/Taxes > Tax Classes.
-2.	Click the “New Tax Class” button.
-3.	Enter the TIC number in the “Tax Class Title” field and a description in the “Description” field.
-4.	Click the “insert” button. 
+	1.	Go to Locations/Taxes > Tax Classes.
+	2.	Click the “New Tax Class” button.
+	3.	Enter the TIC number in the “Tax Class Title” field and a description in the “Description” field.
+	4.	Click the “insert” button. 
 
 Once the TIC is created, go to your catalog and assign it to your products:
-1.	Select a product by going to Catalog > Categories/Products.
-2.	Browse to the product you would like to edit.
-3.	Select the appropriate tax class from the “Tax Class” drop-down.
-4.	Save your changes.
+	1.	Select a product by going to Catalog > Categories/Products.
+	2.	Browse to the product you would like to edit.
+	3.	Select the appropriate tax class from the “Tax Class” drop-down.
+	4.	Save your changes.
 
 6	Testing
 Once you have completed these steps, try some test transactions to make sure everything is working correctly. Make sure to complete at least one test order. The test order must be purchased; it’s not enough to just add an item to your cart.
