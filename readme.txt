@@ -31,6 +31,11 @@ Click “Update” to configure your TaxCloud settings as follows:
 
 Once you’ve entered this information, you should see this message “Server is configured to reach TaxCloud”.
 
+Additional Important Configuration: States must be abbreviated.
+This can be easily achieved by enabling "Show states as pulldown" - This will ensure that only a state's two-character abbreviation is sent to TaxCloud (if full state names are sent, then Pennsylvania will not exist, and Texas will become Tennessee ):
+       -      Browse to Configuration >> Customers Details;
+       -      Look for the “State – Always display as pulldown?” and select “true” from there.
+
 5	Assigning Tax Classes
 Each item in your store needs to be assigned a taxability information code or TIC, so TaxCloud can determine whether or not that item is taxed in your customer’s state. These are stored in ZenCart using the “Tax Classes” section. You should set up at least the General Goods and Services tax class, TIC 00000, which is used to designate items that are taxable in every state. For the complete list of TICs, log in to TaxCloud and go to the “Taxability Codes” section.
 
