@@ -3,19 +3,17 @@
  * paypalwpp.php payment module class for PayPal Express Checkout payment method
  *
  * @package paymentMethod
- * @copyright Copyright 2003-2012 Zen Cart Development Team
+ * @copyright Copyright 2003-2014 Zen Cart Development Team
  * @copyright Portions Copyright 2003 osCommerce
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: DrByte  Tue Aug 28 14:21:34 2012 -0400 Modified in v1.5.1 $
+ * @version GIT: $Id: Author: DrByte  Sat Nov 2 12:51:04 2013 -0400 Modified in v1.5.4 $
  */
 /**
  * load the communications layer code
  */
 require_once(DIR_FS_CATALOG . DIR_WS_MODULES . 'payment/paypal/paypal_curl.php');
-
 require_once(DIR_FS_CATALOG . DIR_WS_MODULES . 'TaxCloud/func.taxcloud.php');
 require_once(DIR_FS_CATALOG . DIR_WS_MODULES . 'TaxCloud/classes.php');    
-
 /**
  * the PayPal payment module with Express Checkout
  */
@@ -90,7 +88,7 @@ class paypalwpp extends base {
   /**
    * Debug tools
    */
-  var $_logDir = 'includes/modules/payment/paypal/logs/';
+  var $_logDir = DIR_FS_LOGS;
   var $_logLevel = 0;
   /**
    * FMF
@@ -105,7 +103,7 @@ class paypalwpp extends base {
     global $order;
     $this->code = 'paypalwpp';
     $this->codeTitle = MODULE_PAYMENT_PAYPALWPP_TEXT_ADMIN_TITLE_EC;
-    $this->codeVersion = '1.5.1';
+    $this->codeVersion = '1.5.4';
     $this->enableDirectPayment = FALSE;
     $this->enabled = (MODULE_PAYMENT_PAYPALWPP_STATUS == 'True');
     // Set the title & description text based on the mode we're in ... EC vs US/UK vs admin
@@ -168,7 +166,7 @@ class paypalwpp extends base {
     $this->zone = (int)MODULE_PAYMENT_PAYPALWPP_ZONE;
     if (is_object($order)) $this->update_status();
 
-    if (PROJECT_VERSION_MAJOR != '1' && substr(PROJECT_VERSION_MINOR, 0, 3) != '5.0') $this->enabled = false;
+    if (PROJECT_VERSION_MAJOR != '1' && substr(PROJECT_VERSION_MINOR, 0, 3) != '5.4') $this->enabled = false;
 
     $this->cards = array();
     // if operating in markflow mode, start EC process when submitting order
@@ -178,6 +176,7 @@ class paypalwpp extends base {
 
     // debug setup
     if (!@is_writable($this->_logDir)) $this->_logDir = DIR_FS_CATALOG . $this->_logDir;
+    if (!@is_writable($this->_logDir)) $this->_logDir = DIR_FS_LOGS;
     if (!@is_writable($this->_logDir)) $this->_logDir = DIR_FS_SQL_CACHE;
     // Regular mode:
     if ($this->enableDebugging) $this->_logLevel = 2;
@@ -193,7 +192,7 @@ class paypalwpp extends base {
   function update_status() {
     global $order, $db;
 //    $this->zcLog('update_status', 'Checking whether module should be enabled or not.');
-    if ($this->enabled && (int)$this->zone > 0) {
+    if ($this->enabled && (int)$this->zone > 0 && isset($order->billing['country']['id'])) {
       $check_flag = false;
       $sql = "SELECT zone_id
               FROM " . TABLE_ZONES_TO_GEO_ZONES . "
@@ -218,6 +217,7 @@ class paypalwpp extends base {
         $this->enabled = false;
         $this->zcLog('update_status', 'Module disabled due to zone restriction. Billing address is not within the Payment Zone selected in the module settings.');
       }
+    }
 
       // module cannot be used for purchase > $10,000 USD
       $order_amount = $this->calc_order_amount($order->info['total'], 'USD');
@@ -229,7 +229,6 @@ class paypalwpp extends base {
         $this->enabled = false;
         $this->zcLog('update_status', 'Module disabled because purchase amount is set to 0.00.' . "\n" . print_r($order, true));
       }
-    }
   }
   /**
    *  Validate the credit card information via javascript (Number, Owner, and CVV Lengths)
@@ -276,7 +275,9 @@ class paypalwpp extends base {
     $optionsNVP = array();
 
     $options = $this->getLineItemDetails($this->selectCurrency($order->info['currency']));
-    if (defined('MODULE_PAYMENT_PAYPALEC_ALLOWEDPAYMENT') && MODULE_PAYMENT_PAYPALEC_ALLOWEDPAYMENT == 'Instant Only') $options['ALLOWEDPAYMENTMETHOD'] = 'InstantPaymentOnly';
+
+    // Allow delayed payments such as eCheck? (can only use InstantPayment if Action is Sale)
+    if (MODULE_PAYMENT_PAYPALWPP_TRANSACTION_MODE != 'Auth Only' && MODULE_PAYMENT_PAYPALWPP_TRANSACTION_MODE != 'Sale' && $options['PAYMENTACTION'] == 'Sale' && defined('MODULE_PAYMENT_PAYPALEC_ALLOWEDPAYMENT') && MODULE_PAYMENT_PAYPALEC_ALLOWEDPAYMENT == 'Instant Only') $options['ALLOWEDPAYMENTMETHOD'] = 'InstantPaymentOnly';
 
     //$this->zcLog('before_process - 1', 'Have line-item details:' . "\n" . print_r($options, true));
 
@@ -499,7 +500,10 @@ class paypalwpp extends base {
             ORDER BY paypal_ipn_id DESC LIMIT 1";
     $sql = $db->bindVars($sql, ':orderID', $zf_order_id, 'integer');
     $ipn = $db->Execute($sql);
-    if ($ipn->RecordCount() == 0) $ipn->fields = array();
+    if ($ipn->EOF) {
+      $ipn = new stdClass;
+      $ipn->fields = array();
+    }
     if (file_exists(DIR_FS_CATALOG . DIR_WS_MODULES . 'payment/paypal/paypalwpp_admin_notification.php')) require(DIR_FS_CATALOG . DIR_WS_MODULES . 'payment/paypal/paypalwpp_admin_notification.php');
     return $output;
   }
@@ -598,7 +602,7 @@ class paypalwpp extends base {
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('PayPal Page Style', 'MODULE_PAYMENT_PAYPALWPP_PAGE_STYLE', 'Primary', 'The page-layout style you want customers to see when they visit the PayPal site. You can configure your <strong>Custom Page Styles</strong> in your PayPal Profile settings. This value is case-sensitive.', '6', '25', now())");
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Store (Brand) Name at PayPal', 'MODULE_PAYMENT_PAYPALWPP_BRANDNAME', '', 'The name of your store as it should appear on the PayPal login page. If blank, your store name will be used.', '6', '25', now())");
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Payment Action', 'MODULE_PAYMENT_PAYPALWPP_TRANSACTION_MODE', 'Final Sale', 'How do you want to obtain payment?<br /><strong>Default: Final Sale</strong>', '6', '25', 'zen_cfg_select_option(array(\'Auth Only\', \'Final Sale\'), ',  now())");
-    $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Transaction Currency', 'MODULE_PAYMENT_PAYPALWPP_CURRENCY', 'Selected Currency', 'Which currency should the order be sent to PayPal as? <br />NOTE: if an unsupported currency is sent to PayPal, it will be auto-converted to USD (or GBP if using UK account)<br /><strong>Default: Selected Currency</strong>', '6', '25', 'zen_cfg_select_option(array(\'Selected Currency\', \'Only USD\', \'Only AUD\', \'Only CAD\', \'Only EUR\', \'Only GBP\', \'Only CHF\', \'Only CZK\', \'Only DKK\', \'Only HKD\', \'Only HUF\', \'Only JPY\', \'Only NOK\', \'Only NZD\', \'Only PLN\', \'Only SEK\', \'Only SGD\', \'Only THB\', \'Only MXN\', \'Only ILS\', \'Only PHP\', \'Only TWD\', \'Only BRL\', \'Only MYR\', \'Only TKD\'), ', now())");
+    $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Transaction Currency', 'MODULE_PAYMENT_PAYPALWPP_CURRENCY', 'Selected Currency', 'Which currency should the order be sent to PayPal as? <br />NOTE: if an unsupported currency is sent to PayPal, it will be auto-converted to USD (or GBP if using UK account)<br /><strong>Default: Selected Currency</strong>', '6', '25', 'zen_cfg_select_option(array(\'Selected Currency\', \'Only USD\', \'Only AUD\', \'Only CAD\', \'Only EUR\', \'Only GBP\', \'Only CHF\', \'Only CZK\', \'Only DKK\', \'Only HKD\', \'Only HUF\', \'Only JPY\', \'Only NOK\', \'Only NZD\', \'Only PLN\', \'Only SEK\', \'Only SGD\', \'Only THB\', \'Only MXN\', \'Only ILS\', \'Only PHP\', \'Only TWD\', \'Only BRL\', \'Only MYR\', \'Only TRY\'), ', now())");
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Allow eCheck?', 'MODULE_PAYMENT_PAYPALEC_ALLOWEDPAYMENT', 'Any', 'Do you want to allow non-instant payments like eCheck/EFT/ELV?', '6', '25', 'zen_cfg_select_option(array(\'Any\', \'Instant Only\'), ', now())");
 
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('Fraud Mgmt Filters - FMF', 'MODULE_PAYMENT_PAYPALWPP_EC_RETURN_FMF_DETAILS', 'No', 'If you have enabled FMF support in your PayPal account and wish to utilize it in your transactions, set this to yes. Otherwise, leave it at No.', '6', '25','zen_cfg_select_option(array(\'No\', \'Yes\'), ', now())");
@@ -990,32 +994,44 @@ class paypalwpp extends base {
       }
     }
   }
-
   /**
-   * Determine the language to use when visiting the PayPal site
+   * Determine the language to use when redirecting to the PayPal site
+   * Order of selection: locale for current language, current-language-code, delivery-country, billing-country, store-country
    */
   function getLanguageCode() {
-    global $order;
+    global $order, $locales;
+    $allowed_country_codes = array('US', 'AU', 'DE', 'FR', 'IT', 'GB', 'ES', 'AT', 'BE', 'CA', 'CH', 'CN', 'NL', 'PL', 'PT', 'BR', 'RU');
+    $allowed_language_codes = array('da_DK', 'he_IL', 'id_ID', 'ja_JP', 'no_NO', 'pt_BR', 'ru_RU', 'sv_SE', 'th_TH', 'tr_TR', 'zh_CN', 'zh_HK', 'zh_TW');
+
     $lang_code = '';
-    $orderISO = zen_get_countries($order->customer['country']['id'], true);
+    $user_locale_info = array();
+    if (isset($locales) && is_array($locales)) {
+      $user_locale_info = $locales;
+    }
+    $user_locale_info[] = strtoupper($_SESSION['languages_code']);
+    $shippingISO = zen_get_countries($order->delivery['country']['id'], true);
+    $user_locale_info[] = strtoupper($shippingISO['countries_iso_code_2']);
+    $billingISO = zen_get_countries($order->billing['country']['id'], true);
+    $user_locale_info[] = strtoupper($billingISO['countries_iso_code_2']);
+    $custISO = zen_get_countries($order->customer['country']['id'], true);
+    $user_locale_info[] = strtoupper($custISO['countries_iso_code_2']);
     $storeISO = zen_get_countries(STORE_COUNTRY, true);
-    if (in_array(strtoupper($orderISO['countries_iso_code_2']), array('US', 'AU', 'DE', 'FR', 'IT', 'GB', 'ES', 'AT', 'BE', 'CA', 'CH', 'CN', 'NL', 'PL'))) {
-      $lang_code = strtoupper($orderISO['countries_iso_code_2']);
-    } elseif (in_array(strtoupper($storeISO['countries_iso_code_2']), array('US', 'AU', 'DE', 'FR', 'IT', 'GB', 'ES', 'AT', 'BE', 'CA', 'CH', 'CN', 'NL', 'PL'))) {
-      $lang_code = strtoupper($storeISO['countries_iso_code_2']);
+    $user_locale_info[] = strtoupper($storeISO['countries_iso_code_2']);
+
+    $to_match = array_map('strtoupper', array_merge($allowed_country_codes, $allowed_language_codes));
+    foreach($user_locale_info as $val) {
+      if (in_array(strtoupper($val), $to_match)) {
+        if (strtoupper($val) == 'EN' && isset($locales) && $locales[0] == 'en_GB') $val = 'GB';
+        if (strtoupper($val) == 'EN') $val = 'US';
+        return $val;
+      }
     }
-    else
-    if (in_array(strtoupper($_SESSION['languages_code']), array('EN', 'US', 'AU', 'DE', 'FR', 'IT', 'GB', 'ES', 'AT', 'BE', 'CA', 'CH', 'CN', 'NL', 'PL'))) {
-      $lang_code = $_SESSION['languages_code'];
-    }
-    if (strtoupper($lang_code) == 'EN') $lang_code = 'US';
-    return strtoupper($lang_code);
   }
   /**
    * Set the currency code -- use defaults if active currency is not a currency accepted by PayPal
    */
   function selectCurrency($val = '', $subset = 'EC') {
-    $ec_currencies = array('CAD', 'EUR', 'GBP', 'JPY', 'USD', 'AUD', 'CHF', 'CZK', 'DKK', 'HKD', 'HUF', 'NOK', 'NZD', 'PLN', 'SEK', 'SGD', 'THB', 'MXN', 'ILS', 'PHP', 'TWD', 'BRL', 'MYR', 'TKD');
+    $ec_currencies = array('CAD', 'EUR', 'GBP', 'JPY', 'USD', 'AUD', 'CHF', 'CZK', 'DKK', 'HKD', 'HUF', 'NOK', 'NZD', 'PLN', 'SEK', 'SGD', 'THB', 'MXN', 'ILS', 'PHP', 'TWD', 'BRL', 'MYR', 'TRY');
     $dp_currencies = array('CAD', 'EUR', 'GBP', 'JPY', 'USD', 'AUD');
     $paypalSupportedCurrencies = ($subset == 'EC') ? $ec_currencies : $dp_currencies;
 
@@ -1038,7 +1054,7 @@ class paypalwpp extends base {
   function calc_order_amount($amount, $paypalCurrency, $applyFormatting = false) {
     global $currencies;
     $amount = ($amount * $currencies->get_value($paypalCurrency));
-    if ($paypalCurrency == 'JPY' || (int)$currencies->get_decimal_places($paypalCurrency) == 0) {
+    if (in_array($paypalCurrency, array('JPY', 'HUF', 'TWD')) || (int)$currencies->get_decimal_places($paypalCurrency) == 0) {
       $amount = (int)$amount;
       $applyFormatting = FALSE;
     }
@@ -1141,15 +1157,15 @@ class paypalwpp extends base {
           }
         }
       }
+
       //TaxCloud fix for PayPal plugin
       $taxCloudTax = $_SESSION['taxcloudTaxTotal']; 
       if ( isset($taxCloudTax)) {
-      	$optionsST['TAXAMT']      = round($taxCloudTax,2);
-      	//Update total
-      	$optionsST['AMT'] = $optionsST['AMT'] + $taxCloudTax;
+           $optionsST['TAXAMT']      = round($taxCloudTax,2);
+           //Update total
+           $optionsST['AMT'] = $optionsST['AMT'] + $taxCloudTax;
       }
       //End TaxCloud fix
-
       if ($creditsApplied > 0) $optionsST['ITEMAMT'] -= $creditsApplied;
       if ($surcharges > 0) $optionsST['ITEMAMT'] += $surcharges;
 
@@ -1386,7 +1402,7 @@ class paypalwpp extends base {
     if (isset($optionsST['INSURANCEAMT']) && $optionsST['INSURANCEAMT'] == 0) unset($optionsST['INSURANCEAMT']);
 
     // tidy up all values so that they comply with proper format (number_format(xxxx,2) for PayPal US use )
-    if (!defined('PAYPALWPP_SKIP_LINE_ITEM_DETAIL_FORMATTING') || PAYPALWPP_SKIP_LINE_ITEM_DETAIL_FORMATTING != 'true' || in_array($order->info['currency'], array('JPY', 'NOK', 'HUF'))) {
+    if (!defined('PAYPALWPP_SKIP_LINE_ITEM_DETAIL_FORMATTING') || PAYPALWPP_SKIP_LINE_ITEM_DETAIL_FORMATTING != 'true' || in_array($order->info['currency'], array('JPY', 'NOK', 'HUF', 'TWD'))) {
       if (is_array($optionsST)) foreach ($optionsST as $key=>$value) {
         $optionsST[$key] = number_format($value, ((int)$currencies->get_decimal_places($restrictedCurrency) == 0 ? 0 : 2));
       }
@@ -1457,9 +1473,6 @@ class paypalwpp extends base {
     $lc_code = $this->getLanguageCode();
     if ($lc_code != '') $options['LOCALECODE'] = $lc_code;
 
-    // Allow delayed payments such as eCheck?
-    if (defined('MODULE_PAYMENT_PAYPALEC_ALLOWEDPAYMENT') && MODULE_PAYMENT_PAYPALEC_ALLOWEDPAYMENT == 'Instant Only') $options['ALLOWEDPAYMENTMETHOD'] = 'InstantPaymentOnly';
-
     //Gift Options
     $options['GIFTMESSAGEENABLE'] = 0;
     $options['GIFTRECEIPTEENABLE'] = 0;
@@ -1478,6 +1491,9 @@ class paypalwpp extends base {
     $options['PAYMENTACTION'] = (MODULE_PAYMENT_PAYPALWPP_TRANSACTION_MODE == 'Auth Only') ? 'Authorization' : 'Sale';
     // for future:
     if (MODULE_PAYMENT_PAYPALWPP_TRANSACTION_MODE == 'Order') $options['PAYMENTACTION'] = 'Order';
+
+    // Allow delayed payments such as eCheck? (can only use InstantPayment if Action is Sale)
+    if (MODULE_PAYMENT_PAYPALWPP_TRANSACTION_MODE != 'Auth Only' && MODULE_PAYMENT_PAYPALWPP_TRANSACTION_MODE != 'Sale' && $options['PAYMENTACTION'] == 'Sale' && defined('MODULE_PAYMENT_PAYPALEC_ALLOWEDPAYMENT') && MODULE_PAYMENT_PAYPALEC_ALLOWEDPAYMENT == 'Instant Only') $options['ALLOWEDPAYMENTMETHOD'] = 'InstantPaymentOnly';
 
     $options['ALLOWNOTE'] = 1;  // allow customer to enter a note on the PayPal site, which will be copied to order comments upon return to store.
     $options['SOLUTIONTYPE'] = 'Sole';  // Use 'Mark' for normal Express Checkout, 'Sole' for auctions or alternate flow
@@ -1552,34 +1568,33 @@ class paypalwpp extends base {
 
     $this->zcLog('ec_step1 - 2 -submit', print_r(array_merge($options, array('RETURNURL' => $return_url, 'CANCELURL' => $cancel_url)), true));
 
-
     //TaxCloud start
-    $country_code = 0;					
+    $country_code = 0;                         
     if ($options['SHIPTOCOUNTRYCODE'] == 'US') {
-    	$country_id = 223;
+         $country_id = 223;
     }
     $TAXCLOUD_ENABLE = func_taxcloud_is_enabled($country_code);
     if ($TAXCLOUD_ENABLE == 'true' ) {
-	    $callback_url = str_replace('&amp;', '&', zen_href_link('paypal_express_callback.php', '', 'SSL', true, true, true));
+         $callback_url = str_replace('&amp;', '&', zen_href_link('paypal_express_callback.php', '', 'SSL', true, true, true));
 
-	    $options['CALLBACK'] = $callback_url;
-	    $options['CALLBACKTIMEOUT'] = 3; //timeout seconds
-	    $options['CALLBACKVERSION'] = '60.0';
-	    $sql = 'select configuration_value from ' . TABLE_CONFIGURATION . ' where configuration_key = \'MODULE_SHIPPING_FLAT_COST\'';
+         $options['CALLBACK'] = $callback_url;
+         $options['CALLBACKTIMEOUT'] = 3; //timeout seconds
+         $options['CALLBACKVERSION'] = '60.0';
+         $sql = 'select configuration_value from ' . TABLE_CONFIGURATION . ' where configuration_key = \'MODULE_SHIPPING_FLAT_COST\'';
 
-	    //PayPal needs a flat-rate shipping option for callbacks 
-	    $result = $db->Execute($sql);
-	    $flatRate = $result->fields['configuration_value'];   
+         //PayPal needs a flat-rate shipping option for callbacks 
+         $result = $db->Execute($sql);
+         $flatRate = $result->fields['configuration_value'];   
 
-	    $options['L_SHIPPINGOPTIONISDEFAULT0'] = 'true';
-	    $options['L_SHIPPINGOPTIONNAME0'] = 'Flat Rate';  
-	    $options['L_SHIPPINGOPTIONAMOUNT0'] = $flatRate;
+         $options['L_SHIPPINGOPTIONISDEFAULT0'] = 'true';
+         $options['L_SHIPPINGOPTIONNAME0'] = 'Flat Rate';  
+         $options['L_SHIPPINGOPTIONAMOUNT0'] = $flatRate;
 
-	    $options['MAXAMT'] = '5000.00';
-	    $options['SHIPPINGAMT'] = $flatRate;
-	    $existingAmt = $options['AMT'];
-	    $options['AMT'] = $existingAmt + $flatRate;
-    	$options['HDRIMG'] = 'https://taxcloud.net/imgs/tax_cloud_logo.jpg';
+         $options['MAXAMT'] = '5000.00';
+         $options['SHIPPINGAMT'] = $flatRate;
+         $existingAmt = $options['AMT'];
+         $options['AMT'] = $existingAmt + $flatRate;
+         $options['HDRIMG'] = 'https://taxcloud.net/imgs/tax_cloud_logo.jpg';
     }
     //TaxCloud end
     
@@ -1590,14 +1605,13 @@ class paypalwpp extends base {
 
     //TaxCloud - now save the token along with the customer info in the hash
     if ($TAXCLOUD_ENABLE == 'true' ) {
-	$token = urldecode($response['TOKEN']);
-	$hash = TokenHash::getInstance();
-	$cartID = $_SESSION['cart']->cartID;
-	$hash->AddToken($_SESSION['customer_id'], $token, $cartID );
+     $token = urldecode($response['TOKEN']);
+     $hash = TokenHash::getInstance();
+     $cartID = $_SESSION['cart']->cartID;
+     $hash->AddToken($_SESSION['customer_id'], $token, $cartID );
        $this->zcLog('adding token to hash.' . "\n" . print_r($hash->getHash)); 
     }
     //TaxCloud end
-      
 
   $submissionCheckOne = TRUE;
   $submissionCheckTwo = TRUE;
@@ -1709,19 +1723,19 @@ class paypalwpp extends base {
     //TaxCloud edit
     $calculationMode = $response['SHIPPINGCALCULATIONMODE'];
     if ( 'Callback' == $calculationMode ) {
-    	$shippingCost = urldecode($response['SHIPPINGOPTIONAMOUNT']);
-    	$shippingIsDefault = $response['SHIPPINGOPTIONAMOUNT'];
-    	$shippingOptionName = urldecode($response['SHIPPINGOPTIONNAME']);
-    	$shippingInsuranceSelected = $response['INSURANCEOPTIONSELECTED'];
-    	
-    	//Create a new shipping object
-    	$shipping = Array();
-    	$shipping['id'] = 'item_item'; //TODO
-    	$shipping['title'] = $shippingOptionName;
-    	$shipping['cost'] = $shippingCost;
-    	$shipping['module'] = 'item'; //TODO 
+         $shippingCost = urldecode($response['SHIPPINGOPTIONAMOUNT']);
+         $shippingIsDefault = $response['SHIPPINGOPTIONAMOUNT'];
+         $shippingOptionName = urldecode($response['SHIPPINGOPTIONNAME']);
+         $shippingInsuranceSelected = $response['INSURANCEOPTIONSELECTED'];
+         
+         //Create a new shipping object
+         $shipping = Array();
+         $shipping['id'] = 'item_item'; //TODO
+         $shipping['title'] = $shippingOptionName;
+         $shipping['cost'] = $shippingCost;
+         $shipping['module'] = 'item'; //TODO 
   
-    	$_SESSION['shipping'] = $shipping;
+         $_SESSION['shipping'] = $shipping;
     }
     //end TaxCloud edit
     
@@ -1788,8 +1802,8 @@ class paypalwpp extends base {
 
     //TaxCloud edit
     if ( 'Callback' != $calculationMode ) {  //only added the if condition
-    	// reset all previously-selected shipping choices, because cart contents may have been changed
-    	if (!(isset($_SESSION['paypal_ec_markflow']) && $_SESSION['paypal_ec_markflow'] == 1)) unset($_SESSION['shipping']);
+         // reset all previously-selected shipping choices, because cart contents may have been changed
+         if (!(isset($_SESSION['paypal_ec_markflow']) && $_SESSION['paypal_ec_markflow'] == 1)) unset($_SESSION['shipping']);
     }
 
     // set total temporarily based on amount returned from PayPal, so validations continue to work properly
@@ -2187,68 +2201,68 @@ class paypalwpp extends base {
       // debug
       $this->zcLog('ec_step2_finish - 8', 'Exiting via terminateEC (from originally-not-logged-in mode).' . "\n" . 'Selected address: ' . $address_book_id . "\nOriginal was: " . (int)$original_default_address_id . "\nprepared data: " . print_r($order->customer, true));
 
-	//TaxCloud edit
-	// Need to do a lookup here so that we have a matching lookup for the authorizedAndCapture
-	$TAXCLOUD_ENABLE = func_taxcloud_is_enabled($country_id);	
-	if ($TAXCLOUD_ENABLE=='true') {
-		$err = Array ();	  			        	
-		
-		$selectedCert = $_SESSION['singlePurchase'];   //one-time certificate
-		$selectedCertID = $_SESSION['selectedCertID'];  //saved certificate
-	
-		if (!isset($selectedCert)) {
-			if (isset($selectedCertID)) {
-				$selectedCert = new ExemptionCertificate();
-				$selectedCert ->setCertificateID($selectedCertID);
-			} else {
-				$selectedCert = null;
-			}
-		} 
-		
-		$customer = $order->customer;
-	//	$_SESSION['cartID'] = $_SESSION['cart']->cartID; Use empty cartID, generate one from TaxCloud
+     //TaxCloud edit
+     // Need to do a lookup here so that we have a matching lookup for the authorizedAndCapture
+     $TAXCLOUD_ENABLE = func_taxcloud_is_enabled($country_id);     
+     if ($TAXCLOUD_ENABLE=='true') {
+          $err = Array ();                                   
+          
+          $selectedCert = $_SESSION['singlePurchase'];   //one-time certificate
+          $selectedCertID = $_SESSION['selectedCertID'];  //saved certificate
+     
+          if (!isset($selectedCert)) {
+               if (isset($selectedCertID)) {
+                    $selectedCert = new ExemptionCertificate();
+                    $selectedCert ->setCertificateID($selectedCertID);
+               } else {
+                    $selectedCert = null;
+               }
+          } 
+          
+          $customer = $order->customer;
+     //     $_SESSION['cartID'] = $_SESSION['cart']->cartID; Use empty cartID, generate one from TaxCloud
 
-		$contents = $_SESSION['cart']->contents;
-		
-		$shippingCost = $_SESSION['shipping']['cost'];
-		
-		$products = Array();
-		$index = 0;
-		foreach ($contents as $id => $info) {
-			$product = Array();
-			$product['id'] = $id;
-			$product['price'] = 0; //TODO!
-			$product['qty'] = $info['qty'];
-			$products[$index] = $product;
-			$index++;
-		}
-		
-		
-		if ( !isset($shippingAddress['street_address']) )  {
-			$shippingAddress = $this->billing;
-		}
-    		
-	  	$tax = func_taxcloud_lookup_tax( $products, $customer, $err, $shippingCost, $selectedCert );	
+          $contents = $_SESSION['cart']->contents;
+          
+          $shippingCost = $_SESSION['shipping']['cost'];
+          
+          $products = Array();
+          $index = 0;
+          foreach ($contents as $id => $info) {
+               $product = Array();
+               $product['id'] = $id;
+               $product['price'] = 0; //TODO!
+               $product['qty'] = $info['qty'];
+               $products[$index] = $product;
+               $index++;
+          }
+          
+          
+          if ( !isset($shippingAddress['street_address']) )  {
+               $shippingAddress = $this->billing;
+          }
+              
+            $tax = func_taxcloud_lookup_tax( $products, $customer, $err, $shippingCost, $selectedCert );     
 
-	  	if (sizeof ( $err ) == 0 && is_array ( $tax )) {  	  		
-  	  		$this->info['tax'] = $tax['tax'];
-			$taxname = $tax['name'];
-			$this->info['tax_groups'] = array ($taxname => $tax['tax']);
-	  	} else {
-			$err_msg = '';
-			foreach ( $err as $msg ) {
-	  	  		$err_msg .= $msg;
-			}		   	
-			$this->info['tax'] = 0;
-			$this->info['tax_groups'] = array("Tax lookup ".$err_msg => 0);
-			$this->info['err_msg'] = $err_msg;			
-			global $messageStack;
-			$messageStack->add_session('checkout', $err_msg, 'error');
-	  	}	
-		
-	} 
+            if (sizeof ( $err ) == 0 && is_array ( $tax )) {                   
+                   $this->info['tax'] = $tax['tax'];
+               $taxname = $tax['name'];
+               $this->info['tax_groups'] = array ($taxname => $tax['tax']);
+            } else {
+               $err_msg = '';
+               foreach ( $err as $msg ) {
+                        $err_msg .= $msg;
+               }                  
+               $this->info['tax'] = 0;
+               $this->info['tax_groups'] = array("Tax lookup ".$err_msg => 0);
+               $this->info['err_msg'] = $err_msg;               
+               global $messageStack;
+               $messageStack->add_session('checkout', $err_msg, 'error');
+            }     
+          
+     } 
 
-	//end TaxCloud edit
+     //end TaxCloud edit
 
       // send the user on
       if ($_SESSION['paypal_ec_markflow'] == 1) {
@@ -2799,7 +2813,7 @@ class paypalwpp extends base {
         // debug
         $this->zcLog('termEC-4', 'We ARE logged in, and $this->showPaymentPage === true');
         // if no shipping selected or if shipping cost is < 0 goto shipping page
-        if ((!$_SESSION['shipping'] || $_SESSION['shipping'] == '') || $_SESSION['shipping']['cost'] < 0) {
+        if ((!isset($_SESSION['shipping'])) || $_SESSION['shipping']['cost'] < 0) {
           // debug
           $this->zcLog('termEC-5', 'Have no shipping method selected, or shipping < 0 so set FILENAME_CHECKOUT_SHIPPING');
           $redirect_path = FILENAME_CHECKOUT_SHIPPING;
@@ -2913,7 +2927,7 @@ class paypalwpp extends base {
           }
 
           // if funding source problem occurred, must send back to re-select alternate funding source
-          if ($response['L_ERRORCODE0'] == 10422) {
+          if ($response['L_ERRORCODE0'] == 10422 || $response['L_ERRORCODE0'] == 10486) {
             $paypal_url = $this->getPayPalLoginServer();
             zen_redirect($paypal_url . "?cmd=_express-checkout&token=" . $_SESSION['paypal_ec_token']);
             die();

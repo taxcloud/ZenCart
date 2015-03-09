@@ -3,9 +3,9 @@
  * File contains the order-processing class ("order")
  *
  * @package classes
- * @copyright Copyright 2003-2012 Zen Cart Development Team
+ * @copyright Copyright 2003-2014 Zen Cart Development Team
  * @license http://www.zen-cart.com/license/2_0.txt GNU Public License V2.0
- * @version GIT: $Id: Author: Ian Wilson  Fri Jun 1 14:21:21 2012 +0000 Modified in v1.5.1 $
+ * @version GIT: $Id: Author: DrByte  Tue Apr 15 15:06:16 2014 -0400 Modified in v1.5.3 $
  */
 /**
  * order class
@@ -20,18 +20,18 @@ if (!defined('IS_ADMIN_FLAG')) {
 
 require_once DIR_WS_MODULES . 'TaxCloud/func.taxcloud.php';
 
-
 class order extends base {
   var $info, $totals, $products, $customer, $delivery, $content_type, $email_low_stock, $products_ordered_attributes,
   $products_ordered, $products_ordered_email, $attachArray;
 
-  function order($order_id = '') {
+  function __construct($order_id = '') {
     $this->info = array();
     $this->totals = array();
     $this->products = array();
     $this->customer = array();
     $this->delivery = array();
 
+    $this->notify('NOTIFY_ORDER_INSTANTIATE', array(), $order_id);
     if (zen_not_null($order_id)) {
       $this->query($order_id);
     } else {
@@ -43,6 +43,9 @@ class order extends base {
     global $db;
 
     $order_id = zen_db_prepare_input($order_id);
+    $this->queryReturnFlag = NULL;
+    $this->notify('NOTIFY_ORDER_BEFORE_QUERY', array(), $order_id);
+    if ($this->queryReturnFlag === TRUE) return;
 
     $order_query = "select customers_id, customers_name, customers_company,
                          customers_street_address, customers_suburb, customers_city,
@@ -55,7 +58,7 @@ class order extends base {
                          billing_state, billing_country, billing_address_format_id,
                          payment_method, payment_module_code, shipping_method, shipping_module_code,
                          coupon_code, cc_type, cc_owner, cc_number, cc_expires, currency, currency_value,
-                         date_purchased, orders_status, last_modified, order_total, order_tax, ip_address
+                         date_purchased, orders_status, last_modified, order_total, order_tax, ip_address  
                         from " . TABLE_ORDERS . "
                         where orders_id = '" . (int)$order_id . "'";
 
@@ -238,6 +241,7 @@ class order extends base {
       $index++;
       $orders_products->MoveNext();
     }
+    $this->notify('NOTIFY_ORDER_AFTER_QUERY', array(), $order_id);
   }
 
   function cart() {
@@ -354,9 +358,9 @@ class order extends base {
     //                          'cc_number' => (isset($GLOBALS['cc_number']) ? $GLOBALS['cc_number'] : ''),
     //                          'cc_expires' => (isset($GLOBALS['cc_expires']) ? $GLOBALS['cc_expires'] : ''),
     //                          'cc_cvv' => (isset($GLOBALS['cc_cvv']) ? $GLOBALS['cc_cvv'] : ''),
-                        'shipping_method' => (is_array($_SESSION['shipping']) ? $_SESSION['shipping']['title'] : $_SESSION['shipping']),
+                        'shipping_method' => (isset($_SESSION['shipping']['title'])) ? $_SESSION['shipping']['title'] : '',
                         'shipping_module_code' => (isset($_SESSION['shipping']['id']) && strpos($_SESSION['shipping']['id'], '_') > 0 ? $_SESSION['shipping']['id'] : $_SESSION['shipping']),
-                        'shipping_cost' => $_SESSION['shipping']['cost'],
+                        'shipping_cost' => isset($_SESSION['shipping']['cost']) ? $_SESSION['shipping']['cost'] : 0,
                         'subtotal' => 0,
                         'shipping_tax' => 0,
                         'tax' => 0,
@@ -445,7 +449,6 @@ class order extends base {
       $this->products[$index] = array('qty' => $products[$i]['quantity'],
                                       'name' => $products[$i]['name'],
                                       'model' => $products[$i]['model'],
-                                      'tax' => zen_get_tax_rate($products[$i]['tax_class_id'], $taxCountryId, $taxZoneId),
                                       'tax_groups'=>$taxRates,
                                       'tax_description' => zen_get_tax_description($products[$i]['tax_class_id'], $taxCountryId, $taxZoneId),
                                       'price' => $products[$i]['price'],
@@ -458,6 +461,17 @@ class order extends base {
                                       'products_discount_type_from' => $products[$i]['products_discount_type_from'],
                                       'id' => $products[$i]['id'],
                                       'rowClass' => $rowClass);
+
+      if (STORE_PRODUCT_TAX_BASIS == 'Shipping' && stristr($_SESSION['shipping']['id'], 'storepickup') == TRUE) 
+      {
+        $taxRates = zen_get_multiple_tax_rates($products[$i]['tax_class_id'], STORE_COUNTRY, STORE_ZONE);
+        $this->products[$index]['tax'] = zen_get_tax_rate($products[$i]['tax_class_id'], STORE_COUNTRY, STORE_ZONE);
+      } else 
+      {
+        $taxRates = zen_get_multiple_tax_rates($products[$i]['tax_class_id'], $tax_address->fields['entry_country_id'], $tax_address->fields['entry_zone_id']);
+        $this->products[$index]['tax'] = zen_get_tax_rate($products[$i]['tax_class_id'], $tax_address->fields['entry_country_id'], $tax_address->fields['entry_zone_id']);
+      }
+
       $this->notify('NOTIFY_ORDER_CART_ADD_PRODUCT_LIST', array('index'=>$index, 'products'=>$products[$i]));
       if ($products[$i]['attributes']) {
         $subindex = 0;
@@ -505,16 +519,14 @@ class order extends base {
           $subindex++;
         }
       }
-      	
-  
-	$shippingAddress = $this->delivery;  
-				
-	if ( !isset($shippingAddress['street_address']) )  {
-		$shippingAddress = $this->billing;
-	}
 
-	$TAXCLOUD_ENABLE = func_taxcloud_is_enabled($shippingAddress['country_id']);	
-	
+  $shippingAddress = $this->delivery;  
+        
+  if ( !isset($shippingAddress['street_address']) )  {
+    $shippingAddress = $this->billing;
+  }
+
+  $TAXCLOUD_ENABLE = func_taxcloud_is_enabled($shippingAddress['country_id']);  
 
       // add onetime charges here
       //$_SESSION['cart']->attributes_price_onetime_charges($products[$i]['id'], $products[$i]['quantity'])
@@ -522,6 +534,7 @@ class order extends base {
       /*********************************************
        * Calculate taxes for this product
        *********************************************/
+
     if ($TAXCLOUD_ENABLE!='true') { 
       $shown_price = (zen_add_tax($this->products[$index]['final_price'] * $this->products[$index]['qty'], $this->products[$index]['tax']))
       + zen_add_tax($this->products[$index]['onetime_charges'], $this->products[$index]['tax']);
@@ -552,68 +565,69 @@ class order extends base {
           $this->info['tax_groups'][$taxDescription] = $taxAdd;
         }
       }
+
     } //END if TAXCLOUD_ENABLE
       /*********************************************
        * END: Calculate taxes for this product
        *********************************************/
       $index++;
     }
-    
+
    /*******************************
      * START TaxCloud
      *******************************/
-      if ($TAXCLOUD_ENABLE=='true') {		
-    	//calculate the sub_total the same way as Zen Cart does above (line after TAXCLOUD_ENABLE!=true) so that the subtotal is displayed
-    	//on checkout_payment.php
-   	foreach($this->products as $k=>$v){
-		$this->info['subtotal'] += ($v['final_price'] * $v['qty']) + $v['onetime_charges']; 
-	}
+      if ($TAXCLOUD_ENABLE=='true') {
+      //calculate the sub_total the same way as Zen Cart does above (line after TAXCLOUD_ENABLE!=true) so that the subtotal is displayed
+      //on checkout_payment.php
+     foreach($this->products as $k=>$v){
+    $this->info['subtotal'] += ($v['final_price'] * $v['qty']) + $v['onetime_charges']; 
+  }
     
-   	 // only call TaxCloud at checkout_confirmation.php page to take coupon into account as well. There's no harm in 
-    	// calling in at checkout_payment.php page as in Zen Cart original design, but all the tax calculation will be 
-    	// void anyway if a coupon is specified at checkout_confirmation.php    
-    	if($_GET['main_page'] == FILENAME_CHECKOUT_PAYMENT || $_GET['main_page'] == FILENAME_CHECKOUT_CONFIRMATION) {      
-	    // ************ TaxCloud Begin ************	        	
-	    
-    		$err = Array ();	  			        	
-		
-		$selectedCert = $_SESSION['singlePurchase'];   //one-time certificate
-		$selectedCertID = $_SESSION['selectedCertID'];  //saved certificate
-	
-		if (!isset($selectedCert)) {
-			if (isset($selectedCertID)) {
-				$selectedCert = new ExemptionCertificate();
-				$selectedCert ->setCertificateID($selectedCertID);
-			} else {
-				$selectedCert = null;
-			}
-		} 
-		
-		$shippingAddress = $this->delivery;  
-				
-		if ( !isset($shippingAddress['street_address']) )  {
-			$shippingAddress = $this->billing;
-		}
-    		
-	  	$tax = func_taxcloud_lookup_tax( $this->products, $shippingAddress, $err, $this->info['shipping_cost'], $selectedCert );	
+      // only call TaxCloud at checkout_confirmation.php page to take coupon into account as well. There's no harm in 
+      // calling in at checkout_payment.php page as in Zen Cart original design, but all the tax calculation will be 
+      // void anyway if a coupon is specified at checkout_confirmation.php    
+      if($_GET['main_page'] == FILENAME_CHECKOUT_PAYMENT || $_GET['main_page'] == FILENAME_CHECKOUT_CONFIRMATION) {      
+      // ************ TaxCloud Begin ************            
+      
+        $err = Array ();                    
+    
+    $selectedCert = $_SESSION['singlePurchase'];   //one-time certificate
+    $selectedCertID = $_SESSION['selectedCertID'];  //saved certificate
+  
+    if (!isset($selectedCert)) {
+      if (isset($selectedCertID)) {
+        $selectedCert = new ExemptionCertificate();
+        $selectedCert ->setCertificateID($selectedCertID);
+      } else {
+        $selectedCert = null;
+      }
+    } 
+    
+    $shippingAddress = $this->delivery;  
+        
+    if ( !isset($shippingAddress['street_address']) )  {
+      $shippingAddress = $this->billing;
+    }
+        
+      $tax = func_taxcloud_lookup_tax( $this->products, $shippingAddress, $err, $this->info['shipping_cost'], $selectedCert );  
 
-	  	if (sizeof ( $err ) == 0 && is_array ( $tax ) && $tax['tax'] > 0 ) {  	  		
-  	  		$this->info['tax'] = $tax['tax'];
-			$taxname = $tax['name'];
-			$this->info['tax_groups'] = array ($taxname => $tax['tax']);
-	  	} else {
-			$err_msg = '';
-			foreach ( $err as $msg ) {
-	  	  		$err_msg .= $msg;
-			}		   	
-			$this->info['tax'] = 0;
-			$this->info['tax_groups'] = array("Tax lookup ".$err_msg => 0);
-			$this->info['err_msg'] = $err_msg;			
-			global $messageStack;
-			$messageStack->add_session('checkout', $err_msg, 'error');
-	  	}
-	   
-    	}           
+      if (sizeof ( $err ) == 0 && is_array ( $tax ) && $tax['tax'] > 0 ) {          
+          $this->info['tax'] = $tax['tax'];
+      $taxname = $tax['name'];
+      $this->info['tax_groups'] = array ($taxname => $tax['tax']);
+      } else {
+      $err_msg = '';
+      foreach ( $err as $msg ) {
+            $err_msg .= $msg;
+      }         
+      $this->info['tax'] = 0;
+      $this->info['tax_groups'] = array("Tax lookup ".$err_msg => 0);
+      $this->info['err_msg'] = $err_msg;      
+      global $messageStack;
+      $messageStack->add_session('checkout', $err_msg, 'error');
+      }
+     
+      }           
     } // END TAXCLOUD_ENABLED
 
     // Update the final total to include tax if not already tax-inc
@@ -643,112 +657,115 @@ class order extends base {
 
   function create($zf_ot_modules, $zf_mode = 2) {
     global $db;
-    
-    // If we are using TaxCloud we need to update the totals again since they get recalculated by the cart
-	$shippingAddress = $this->delivery;  
-				
-	if ( !isset($shippingAddress['street_address']) )  {
-		$shippingAddress = $this->billing;
-	}
 
-	$TAXCLOUD_ENABLE = func_taxcloud_is_enabled($shippingAddress['country_id']);	
-	
-    if ($TAXCLOUD_ENABLE =='true' && !$_SESSION['cot_gv']) {      
-    	$taxcloudTaxTotal = $_SESSION['taxcloudTaxTotal'];	
-    	if ( isset($taxcloudTaxTotal) && $taxcloudTaxTotal > 0 ) {	
-    		$this->info['tax'] = $taxcloudTaxTotal;
-    		$origTotal = $this->info['total'];
-    		$this->info['total'] = $origTotal + $taxcloudTaxTotal; 
-    		
-    		$moduleIndex = 0;
-    		//update order total modules
-    		foreach ($zf_ot_modules as $module) {
-    			if ( $module['code'] == 'ot_total' ) { 		 
-    				$originalValue = $module['value']; 
-    				$newOrderTotal = sprintf("%.2f", ($originalValue + $taxcloudTaxTotal)); 
-    				$module['text'] = '$'.$newOrderTotal;
-    				$module['value'] = $newOrderTotal; 
-    			}
-    			$zf_ot_modules[$moduleIndex] = $module;
-    			$moduleIndex++;
-    		}
-    		// add tax module
-    		$taxModule = Array();
-    		$taxModule['code'] = 'ot_tax';
-    		$taxModule['title'] = 'Sales tax:';
-    		$taxModule['text'] = '$'.$taxcloudTaxTotal;
-    		$taxModule['value'] = $taxcloudTaxTotal;
-    		$taxModule['sort_order'] = 990;
-    		$zf_ot_modules[$moduleIndex] = $taxModule;
-    	}
+    // If we are using TaxCloud we need to update the totals again since they get recalculated by the cart
+  $shippingAddress = $this->delivery;  
+        
+  if ( !isset($shippingAddress['street_address']) )  {
+    $shippingAddress = $this->billing;
+  }
+
+  $TAXCLOUD_ENABLE = func_taxcloud_is_enabled($shippingAddress['country_id']);  
+  
+  if ($TAXCLOUD_ENABLE =='true' && !$_SESSION['cot_gv']) {
+      $taxcloudTaxTotal = $_SESSION['taxcloudTaxTotal'];  
+      if ( isset($taxcloudTaxTotal) && $taxcloudTaxTotal > 0 ) {  
+        $this->info['tax'] = $taxcloudTaxTotal;
+        $origTotal = $this->info['total'];
+        $this->info['total'] = $origTotal + $taxcloudTaxTotal; 
+        
+        $moduleIndex = 0;
+        //update order total modules
+        foreach ($zf_ot_modules as $module) {
+          if ( $module['code'] == 'ot_total' ) {      
+            $originalValue = $module['value']; 
+            $newOrderTotal = sprintf("%.2f", ($originalValue + $taxcloudTaxTotal)); 
+            $module['text'] = '$'.$newOrderTotal;
+            $module['value'] = $newOrderTotal; 
+          }
+          $zf_ot_modules[$moduleIndex] = $module;
+          $moduleIndex++;
+        }
+        // add tax module
+        $taxModule = Array();
+        $taxModule['code'] = 'ot_tax';
+        $taxModule['title'] = 'Sales tax:';
+        $taxModule['text'] = '$'.$taxcloudTaxTotal;
+        $taxModule['value'] = $taxcloudTaxTotal;
+        $taxModule['sort_order'] = 990;
+        $zf_ot_modules[$moduleIndex] = $taxModule;
+      }
     } else if ($TAXCLOUD_ENABLE =='true' && $_SESSION['cot_gv']) { //Using gift certificate
-     	$taxcloudTaxTotal = $_SESSION['taxcloudTaxTotal'];	
-    	if ( isset($taxcloudTaxTotal) ) {
-    		$this->info['tax'] = $taxcloudTaxTotal;		
-    		$origTotal = $this->info['total'];		
-    		
-    		$moduleIndex = 0;
-    		$newOrderTotal = 0;
-    		//update order total modules
-    		foreach ($zf_ot_modules as $module) {
-    	
-			if ($module['code'] == 'ot_gv' || $module['code'] == 'ot_total') {
-			   // don't add to totals
-			} else {
-				$newOrderTotal = $newOrderTotal + $module['value'];		
-			}
-			    	
-    			$zf_ot_modules[$moduleIndex] = $module;				
-    			$moduleIndex++;
-    		} 
-    		// add tax module
-    		$taxModule = Array();
-    		$taxModule['code'] = 'ot_tax';
-    		$taxModule['title'] = 'Sales tax:';
-    		$taxModule['text'] = '$'.$taxcloudTaxTotal;
-    		$taxModule['value'] = $taxcloudTaxTotal;
-    		$newOrderTotal = $newOrderTotal + $taxcloudTaxTotal;
-    		$taxModule['sort_order'] = 990;
-    		$zf_ot_modules[$moduleIndex] = $taxModule;			
-    		
-    		// now reset the order totals
-    		$newOrderTotal = round(($newOrderTotal - $_SESSION['cot_gv']),2);
-    		$giftCertAmount = $_SESSION['cot_gv'];		
-    		if ( $newOrderTotal < 0 ) {
-    			$giftCertAmount = $_SESSION['cot_gv'] + $newOrderTotal; 
-    			$newOrderTotal = 0;
-    		}
-    		
-    		$moduleIndex = 0;
-    		foreach ($zf_ot_modules as $module) {
-    			if ($module['code'] == 'ot_gv') {
-  				$module['value'] = $giftCertAmount;
-			    	$module['text'] = '-$'. $giftCertAmount;  
-			    	$_SESSION['cot_gv'] = $giftCertAmount;
-    			} else if ($module['code'] == 'ot_total') {
-    				$module['value'] = $newOrderTotal;
-    				$module['text'] = $newOrderTotal;
-    				$this->info['total'] = $newOrderTotal;
-    			}
-    			$zf_ot_modules[$moduleIndex] = $module;
-    			$moduleIndex++;
-    		}
-    	} 
+       $taxcloudTaxTotal = $_SESSION['taxcloudTaxTotal'];  
+      if ( isset($taxcloudTaxTotal) ) {
+        $this->info['tax'] = $taxcloudTaxTotal;    
+        $origTotal = $this->info['total'];    
+        
+        $moduleIndex = 0;
+        $newOrderTotal = 0;
+        //update order total modules
+        foreach ($zf_ot_modules as $module) {
+      
+      if ($module['code'] == 'ot_gv' || $module['code'] == 'ot_total') {
+         // don't add to totals
+      } else {
+        $newOrderTotal = $newOrderTotal + $module['value'];    
+      }
+            
+          $zf_ot_modules[$moduleIndex] = $module;        
+          $moduleIndex++;
+        } 
+        // add tax module
+        $taxModule = Array();
+        $taxModule['code'] = 'ot_tax';
+        $taxModule['title'] = 'Sales tax:';
+        $taxModule['text'] = '$'.$taxcloudTaxTotal;
+        $taxModule['value'] = $taxcloudTaxTotal;
+        $newOrderTotal = $newOrderTotal + $taxcloudTaxTotal;
+        $taxModule['sort_order'] = 990;
+        $zf_ot_modules[$moduleIndex] = $taxModule;      
+        
+        // now reset the order totals
+        $newOrderTotal = round(($newOrderTotal - $_SESSION['cot_gv']),2);
+        $giftCertAmount = $_SESSION['cot_gv'];    
+        if ( $newOrderTotal < 0 ) {
+          $giftCertAmount = $_SESSION['cot_gv'] + $newOrderTotal; 
+          $newOrderTotal = 0;
+        }
+        
+        $moduleIndex = 0;
+        foreach ($zf_ot_modules as $module) {
+          if ($module['code'] == 'ot_gv') {
+          $module['value'] = $giftCertAmount;
+            $module['text'] = '-$'. $giftCertAmount;  
+            $_SESSION['cot_gv'] = $giftCertAmount;
+          } else if ($module['code'] == 'ot_total') {
+            $module['value'] = $newOrderTotal;
+            $module['text'] = $newOrderTotal;
+            $this->info['total'] = $newOrderTotal;
+          }
+          $zf_ot_modules[$moduleIndex] = $module;
+          $moduleIndex++;
+        }
+      } 
     
     } // end if TAXCLOUD_ENABLE
 
+    $this->notify('NOTIFY_ORDER_CART_EXTERNAL_TAX_DURING_ORDER_CREATE', array(), $zf_ot_modules);
+
     if ($this->info['total'] == 0) {
       if (DEFAULT_ZERO_BALANCE_ORDERS_STATUS_ID == 0) {
-        $this->info['order_status'] = DEFAULT_ORDERS_STATUS_ID;
+        $this->info['order_status'] = (int)DEFAULT_ORDERS_STATUS_ID;
       } else {
         if ($_SESSION['payment'] != 'freecharger') {
-          $this->info['order_status'] = DEFAULT_ZERO_BALANCE_ORDERS_STATUS_ID;
+          $this->info['order_status'] = (int)DEFAULT_ZERO_BALANCE_ORDERS_STATUS_ID;
         }
       }
     }
+    $this->notify('NOTIFY_ORDER_CART_ORDERSTATUS');
 
-    if ($_SESSION['shipping'] == 'free_free') {
-      $this->info['shipping_module_code'] = $_SESSION['shipping'];
+    if ($_SESSION['shipping']['id'] == 'free_free') {
+      $this->info['shipping_module_code'] = $_SESSION['shipping']['id'];
     }
 
     // Sanitize cc-num if present, using maximum 10 chars, with middle chars stripped out with XX
@@ -807,7 +824,6 @@ class order extends base {
                             'ip_address' => $_SESSION['customers_ip_address'] . ' - ' . $_SERVER['REMOTE_ADDR']
                             );
 
-
     zen_db_perform(TABLE_ORDERS, $sql_data_array);
 
     $insert_id = $db->Insert_ID();
@@ -838,12 +854,12 @@ class order extends base {
 
     $this->notify('NOTIFY_ORDER_DURING_CREATE_ADDED_ORDER_COMMENT', $sql_data_array);
 
-    return($insert_id);
+    return $insert_id;
 
   }
 
 
-  function  create_add_products($zf_insert_id, $zf_mode = false) {
+  function create_add_products($zf_insert_id, $zf_mode = false) {
     global $db, $currencies, $order_total_modules, $order_totals;
 
     // initialized for the email confirmation
@@ -857,8 +873,11 @@ class order extends base {
 
     for ($i=0, $n=sizeof($this->products); $i<$n; $i++) {
       $custom_insertable_text = '';
+
+      $this->doStockDecrement = (STOCK_LIMITED == 'true');
+      $this->notify('NOTIFY_ORDER_PROCESSING_STOCK_DECREMENT_INIT', array(), $this->products[$i], $i);
       // Stock Update - Joao Correia
-      if (STOCK_LIMITED == 'true') {
+      if ($this->doStockDecrement) {
         if (DOWNLOAD_ENABLED == 'true') {
           $stock_query_raw = "select p.products_quantity, pad.products_attributes_filename, p.product_is_always_free_shipping
                               from " . TABLE_PRODUCTS . " p
@@ -874,12 +893,12 @@ class order extends base {
           if (is_array($products_attributes)) {
             $stock_query_raw .= " AND pa.options_id = '" . $products_attributes[0]['option_id'] . "' AND pa.options_values_id = '" . $products_attributes[0]['value_id'] . "'";
           }
-          $stock_values = $db->Execute($stock_query_raw);
+          $stock_values = $db->Execute($stock_query_raw, false, false, 0, true);
         } else {
-          $stock_values = $db->Execute("select * from " . TABLE_PRODUCTS . " where products_id = '" . zen_get_prid($this->products[$i]['id']) . "'");
+          $stock_values = $db->Execute("select * from " . TABLE_PRODUCTS . " where products_id = '" . zen_get_prid($this->products[$i]['id']) . "'", false, false, 0, true);
         }
 
-        $this->notify('NOTIFY_ORDER_PROCESSING_STOCK_DECREMENT_BEGIN');
+        $this->notify('NOTIFY_ORDER_PROCESSING_STOCK_DECREMENT_BEGIN', $i, $stock_values);
 
         if ($stock_values->RecordCount() > 0) {
           // do not decrement quantities if products_attributes_filename exists
@@ -910,10 +929,13 @@ class order extends base {
       }
 
       // Update products_ordered (for bestsellers list)
-      //    $db->Execute("update " . TABLE_PRODUCTS . " set products_ordered = products_ordered + " . sprintf('%d', $order->products[$i]['qty']) . " where products_id = '" . zen_get_prid($order->products[$i]['id']) . "'");
-      $db->Execute("update " . TABLE_PRODUCTS . " set products_ordered = products_ordered + " . sprintf('%f', $this->products[$i]['qty']) . " where products_id = '" . zen_get_prid($this->products[$i]['id']) . "'");
+      $this->bestSellersUpdate = TRUE;
+      $this->notify('NOTIFY_ORDER_PROCESSING_BESTSELLERS_UPDATE', array(), $this->products[$i], $i);
+      if ($this->bestSellersUpdate) {
+        $db->Execute("update " . TABLE_PRODUCTS . " set products_ordered = products_ordered + " . sprintf('%f', $this->products[$i]['qty']) . " where products_id = '" . zen_get_prid($this->products[$i]['id']) . "'");
+      }
 
-      $this->notify('NOTIFY_ORDER_PROCESSING_STOCK_DECREMENT_END');
+      $this->notify('NOTIFY_ORDER_PROCESSING_STOCK_DECREMENT_END', $i);
 
       $sql_data_array = array('orders_id' => $zf_insert_id,
                               'products_id' => zen_get_prid($this->products[$i]['id']),
@@ -1038,7 +1060,7 @@ class order extends base {
       //------eof: insert customer-chosen options ----
     $this->notify('NOTIFY_ORDER_PROCESSING_ATTRIBUTES_EXIST', $attributes_exist);
 
-    $this->notify('NOTIFY_ORDER_DURING_CREATE_ADD_PRODUCTS', $custom_insertable_text);
+    $this->notify('NOTIFY_ORDER_DURING_CREATE_ADD_PRODUCTS', $i, $custom_insertable_text);
 
 /* START: ADD MY CUSTOM DETAILS
  * 1. calculate/prepare custom information to be added to this product entry in order-confirmation, perhaps as a function call to custom code to build a serial number etc:
@@ -1063,7 +1085,7 @@ class order extends base {
       $this->total_tax += zen_calculate_tax($total_products_price * $this->products[$i]['qty'], $products_tax);
       $this->total_cost += $total_products_price;
 
-      $this->notify('NOTIFY_ORDER_PROCESSING_ONE_TIME_CHARGES_BEGIN');
+      $this->notify('NOTIFY_ORDER_PROCESSING_ONE_TIME_CHARGES_BEGIN', $i);
 
       // build output for email notification
       $this->products_ordered .=  $this->products[$i]['qty'] . ' x ' . $this->products[$i]['name'] . ($this->products[$i]['model'] != '' ? ' (' . $this->products[$i]['model'] . ') ' : '') . ' = ' .
@@ -1091,10 +1113,14 @@ class order extends base {
   }
 
 
-  function send_order_email($zf_insert_id, $zf_mode) {
+  function send_order_email($zf_insert_id, $zf_mode = FALSE) {
     global $currencies, $order_totals;
-    if ($this->email_low_stock != '' and SEND_LOWSTOCK_EMAIL=='1') {
-      // send an email
+    $this->notify('NOTIFY_ORDER_SEND_EMAIL_INITIALIZE', array(), $zf_insert_id, $order_totals, $zf_mode);
+    if (!defined('ORDER_EMAIL_DATE_FORMAT')) define('ORDER_EMAIL_DATE_FORMAT', 'M-d-Y h:iA');
+
+    $this->send_low_stock_emails = TRUE;
+    $this->notify('NOTIFY_ORDER_SEND_LOW_STOCK_EMAILS');
+    if ($this->send_low_stock_emails && $this->email_low_stock != ''  && SEND_LOWSTOCK_EMAIL=='1') {
       $email_low_stock = SEND_EXTRA_LOW_STOCK_EMAIL_TITLE . "\n\n" . $this->email_low_stock;
       zen_mail('', SEND_EXTRA_LOW_STOCK_EMAILS_TO, EMAIL_TEXT_SUBJECT_LOWSTOCK, $email_low_stock, STORE_OWNER, EMAIL_FROM, array('EMAIL_MESSAGE_HTML' => nl2br($email_low_stock)),'low_stock');
     }
@@ -1123,6 +1149,19 @@ class order extends base {
     $html_msg['INTRO_URL_TEXT']        = EMAIL_TEXT_INVOICE_URL_CLICK;
     $html_msg['INTRO_URL_VALUE']       = zen_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $zf_insert_id, 'SSL', false);
 
+    $html_msg['EMAIL_CUSTOMER_PHONE']  = $this->customer['telephone'];
+    $html_msg['EMAIL_ORDER_DATE']      = date(ORDER_EMAIL_DATE_FORMAT);
+
+      $invoiceInfo=EMAIL_TEXT_INVOICE_URL . ' ' . zen_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $zf_insert_id, 'SSL', false) . "\n\n";
+      $htmlInvoiceURL=EMAIL_TEXT_INVOICE_URL_CLICK;
+      $htmlInvoiceValue=zen_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $zf_insert_id, 'SSL', false);
+      $email_order = EMAIL_TEXT_HEADER . EMAIL_TEXT_FROM . STORE_NAME . "\n\n" .
+      $this->customer['firstname'] . ' ' . $this->customer['lastname'] . "\n\n" .
+      EMAIL_THANKS_FOR_SHOPPING . "\n" . EMAIL_DETAILS_FOLLOW . "\n" .
+      EMAIL_SEPARATOR . "\n" .
+      EMAIL_TEXT_ORDER_NUMBER . ' ' . $zf_insert_id . "\n" .
+      EMAIL_TEXT_DATE_ORDERED . ' ' . strftime(DATE_FORMAT_LONG) . "\n" .
+      EMAIL_TEXT_INVOICE_URL . ' ' . zen_href_link(FILENAME_ACCOUNT_HISTORY_INFO, 'order_id=' . $zf_insert_id, 'SSL', false) . "\n\n";
     //comments area
     if ($this->info['comments']) {
       $email_order .= zen_db_output($this->info['comments']) . "\n\n";
@@ -1138,38 +1177,38 @@ class order extends base {
     EMAIL_SEPARATOR . "\n";
     $html_msg['PRODUCTS_TITLE'] = EMAIL_TEXT_PRODUCTS;
     $html_msg['PRODUCTS_DETAIL']='<table class="product-details" border="0" width="100%" cellspacing="0" cellpadding="2">' . $this->products_ordered_html . '</table>';
-    
+
     // If we are using TaxCloud we need to add an order total item for tax
     $shippingAddress = $this->delivery;  
     if ( !isset($shippingAddress['street_address']) )  {
-    	$shippingAddress = $this->billing;
+      $shippingAddress = $this->billing;
     }
     
-    $TAXCLOUD_ENABLE = func_taxcloud_is_enabled($shippingAddress['country_id']);	
+    $TAXCLOUD_ENABLE = func_taxcloud_is_enabled($shippingAddress['country_id']);  
    
     if ($TAXCLOUD_ENABLE =='true') {   
-    	$taxcloudTaxTotal = $_SESSION['taxcloudTaxTotal'];  	 
-    	if ( isset($taxcloudTaxTotal) && $taxcloudTaxTotal > 0) {
-    		$index = 0;
-    		foreach ($order_totals as $ot) {
-    			if ( $ot['code'] == 'ot_total' ) { 
-    				$newValue = $ot['value'] + $taxcloudTaxTotal;
-    				$ot['value'] = $newValue;
-    				$ot['text'] = '$' . $newValue;
-    				
-    				$order_totals[$index + 1] = $ot;
-    				    		
-				$ot_tax = Array();
-				$ot_tax['code'] = 'ot_tax';
-				$ot_tax['title'] = 'Tax:';
-				$ot_tax['text'] = '$' . $taxcloudTaxTotal;
-				$ot_tax['value'] = $taxcloudTaxTotal;
-				$ot_tax['sort_order'] = 500;
-    				$order_totals[$index] = $ot_tax;
-    			} 
-    			$index++;
-    		}
-    	}
+      $taxcloudTaxTotal = $_SESSION['taxcloudTaxTotal'];     
+      if ( isset($taxcloudTaxTotal) && $taxcloudTaxTotal > 0) {
+        $index = 0;
+        foreach ($order_totals as $ot) {
+          if ( $ot['code'] == 'ot_total' ) { 
+            $newValue = $ot['value'] + $taxcloudTaxTotal;
+            $ot['value'] = $newValue;
+            $ot['text'] = '$' . $newValue;
+            
+            $order_totals[$index + 1] = $ot;
+                    
+        $ot_tax = Array();
+        $ot_tax['code'] = 'ot_tax';
+        $ot_tax['title'] = 'Tax:';
+        $ot_tax['text'] = '$' . $taxcloudTaxTotal;
+        $ot_tax['value'] = $taxcloudTaxTotal;
+        $ot_tax['sort_order'] = 500;
+            $order_totals[$index] = $ot_tax;
+          } 
+          $index++;
+        }
+      }
     }      
 
     //order totals area
@@ -1193,13 +1232,16 @@ class order extends base {
       zen_address_label($_SESSION['customer_id'], $_SESSION['sendto'], 0, '', "\n") . "\n";
     }
 
-    //addresses area: Billing
+    if ($_SESSION['cart']->show_total() != 0) {
     $email_order .= "\n" . EMAIL_TEXT_BILLING_ADDRESS . "\n" .
     EMAIL_SEPARATOR . "\n" .
     zen_address_label($_SESSION['customer_id'], $_SESSION['billto'], 0, '', "\n") . "\n\n";
     $html_msg['ADDRESS_BILLING_TITLE']   = EMAIL_TEXT_BILLING_ADDRESS;
     $html_msg['ADDRESS_BILLING_DETAIL']  = zen_address_label($_SESSION['customer_id'], $_SESSION['billto'], true, '', "<br />");
-
+    } else{
+    $html_msg['ADDRESS_BILLING_TITLE']   = '';
+    $html_msg['ADDRESS_BILLING_DETAIL']  = ' <br />';    
+    }
     if (is_object($GLOBALS[$_SESSION['payment']])) {
       $cc_num_display = (isset($this->info['cc_number']) && $this->info['cc_number'] != '') ? /*substr($this->info['cc_number'], 0, 4) . */ str_repeat('X', (strlen($this->info['cc_number']) - 8)) . substr($this->info['cc_number'], -4) . "\n\n" : '';
       $email_order .= EMAIL_TEXT_PAYMENT_METHOD . "\n" .
@@ -1227,13 +1269,14 @@ class order extends base {
     $html_msg['EMAIL_FIRST_NAME'] = $this->customer['firstname'];
     $html_msg['EMAIL_LAST_NAME'] = $this->customer['lastname'];
     //  $html_msg['EMAIL_TEXT_HEADER'] = EMAIL_TEXT_HEADER;
+
     $html_msg['EXTRA_INFO'] = '';
-    $this->notify('NOTIFY_ORDER_INVOICE_CONTENT_READY_TO_SEND', array('zf_insert_id' => $zf_insert_id, 'text_email' => $email_order, 'html_email' => $html_msg));
+    $this->notify('NOTIFY_ORDER_INVOICE_CONTENT_READY_TO_SEND', array('zf_insert_id' => $zf_insert_id, 'text_email' => $email_order, 'html_email' => $html_msg), $email_order, $html_msg);
     zen_mail($this->customer['firstname'] . ' ' . $this->customer['lastname'], $this->customer['email_address'], EMAIL_TEXT_SUBJECT . EMAIL_ORDER_NUMBER_SUBJECT . $zf_insert_id, $email_order, STORE_NAME, EMAIL_FROM, $html_msg, 'checkout', $this->attachArray);
 
     // send additional emails
     if (SEND_EXTRA_ORDER_EMAILS_TO != '') {
-      $extra_info=email_collect_extra_info('','', $this->customer['firstname'] . ' ' . $this->customer['lastname'], $this->customer['email_address'], $this->customer['telephone']);
+      $extra_info = email_collect_extra_info('', '', $this->customer['firstname'] . ' ' . $this->customer['lastname'], $this->customer['email_address'], $this->customer['telephone']);
       $html_msg['EXTRA_INFO'] = $extra_info['HTML'];
 
       // include authcode and transaction id in admin-copy of email
@@ -1243,9 +1286,14 @@ class order extends base {
         $html_msg['EMAIL_TEXT_HEADER'] = nl2br($pmt_details) . $html_msg['EMAIL_TEXT_HEADER'];
       }
 
+      // Add extra heading stuff via observer class
+      $this->extra_header_text = '';
       $this->notify('NOTIFY_ORDER_INVOICE_CONTENT_FOR_ADDITIONAL_EMAILS', array('zf_insert_id' => $zf_insert_id, 'text_email' => $email_order, 'html_email' => $html_msg));
+      $email_order = $this->extra_header_text . $email_order;
+      $html_msg['EMAIL_TEXT_HEADER'] = nl2br($this->extra_header_text) . $html_msg['EMAIL_TEXT_HEADER'];
+
       zen_mail('', SEND_EXTRA_ORDER_EMAILS_TO, SEND_EXTRA_NEW_ORDERS_EMAILS_TO_SUBJECT . ' ' . EMAIL_TEXT_SUBJECT . EMAIL_ORDER_NUMBER_SUBJECT . $zf_insert_id,
-      $email_order . $extra_info['TEXT'], STORE_NAME, EMAIL_FROM, $html_msg, 'checkout_extra', $this->attachArray);
+      $email_order . $extra_info['TEXT'], STORE_NAME, EMAIL_FROM, $html_msg, 'checkout_extra', $this->attachArray, $this->customer['firstname'] . ' ' . $this->customer['lastname'], $this->customer['email_address']);
     }
     $this->notify('NOTIFY_ORDER_AFTER_SEND_ORDER_EMAIL', array($zf_insert_id, $email_order, $extra_info, $html_msg));
   }
