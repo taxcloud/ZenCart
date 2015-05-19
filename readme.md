@@ -10,7 +10,7 @@ Here’s what you’ll need to do:
 
 2. You will receive an email with a link to confirm creation of your new account, and set you account password.	
 
-3. Nex, log into your new TaxCloud account and:
+3. Next, log into your new TaxCloud account and:
   - Provide you company's basic information (Legal Name, Employer Identification Number, NAICS code, State of Incorporation) in the account Profile area
   - Enter your office address in the [Locations area](https://taxcloud.net/account/locations/).
   - Select any additional states where you want to collect sales tax in the [Tax States area](https://taxcloud.net/account/states/).
@@ -107,8 +107,8 @@ This functionality is available as an order total module. If you would like to u
 This will add a link to the checkout page that says “Are you exempt?” [See this example](http://taxcloud.net/imgs/cert_sample.html).
 
 ##Coupons##
-Zen Cart includes a built-in module for managing coupons. Unfortunately this module does not interact with TaxCloud correctly. So instead, we have provided a custom Discount Coupon module that replaces the standard one. If you are planning to use discount coupons on your site, you need to **disable the standard Discount Coupon module** in the Zen Cart admin console by going to Modules >> Order Total. Then, select the TaxCloud version of Discount Coupon, and click the “Install” button.
- 
+Zen Cart includes a built-in module for managing coupons. Unfortunately this default coupon module does not handle coupons and sales tax correctly - it applies coupons *after* tax calculation, which is **incorrect.** This is because coupons and discounts affect the Sales Price (the legal term for the amount to be paid by the customer). Accordingly, sale tax calculation must be done **after** application of discounts or coupons. To solve this issue, we have provided a custom Discount Coupon module that replaces the standard one. If you are planning to use discount coupons on your site, you should **disable the standard Discount Coupon module** in the Zen Cart admin console by going to Modules >> Order Total. Then, select the TaxCloud version of Discount Coupon, and click the “Install” button.
+
 ----------------------------------------------------
 This code is released under the GNU GENERAL PUBLIC LICENSE (see [License](LICENSE.md))
 
