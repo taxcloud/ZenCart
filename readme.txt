@@ -1,29 +1,29 @@
-TaxCloud for Zen Cart v1.5+
+#TaxCloud for Zen Cart v1.5+#
 
-TaxCloud® is a free, easy-to-use sales tax management service for retailers. Our free add-on module integrates with Zen Cart version 1.5 and above. This module overrides Zen Cart’s built-in tax calculation and replaces it with a real-time tax rate lookup.
+[TaxCloud®](http so://TaxCloud.net) is a free, easy-to-use sales tax management service for retailers. Our free add-on module integrates with Zen Cart version 1.5 and above. This module overrides Zen Cart’s built-in tax calculation and replaces it with a real-time tax rate lookup.
+##How TaxCloud works##
+After a customer has entered a shipping address during checkout, Zen Cart sends TaxCloud a request to calculate the sales tax due. TaxCloud returns that information to Zen Cart, and sales tax is added to the customer’s total. Once the order is completed, another request is sent to TaxCloud to capture the transaction. All the captured transactions are included in the report that TaxCloud provides at the end of each month.
 
-1	How TaxCloud works
-After a customer has entered a shipping address during checkout, Zen Cart sends TaxCloud a request to calculate the sales tax due. TaxCloud returns that information to Zen Cart, and sales tax is added to the customer’s total. Once the order is completed, another request is sent to TaxCloud to capture the transaction. All the captured transactions are included in the report that TaxCloud provides at the end of each month. 
-
-2	Preparation
+##Preparation##
 Here’s what you’ll need:
-	-	A TaxCloud account. Register at taxcloud.com. Log in to your account and enter your office address, website URL, and the states where you want to collect sales tax. 
-	-	TaxCloud API ID and API Key. These can be found in your TaxCloud account on the “Websites” page. If the website you want to use TaxCloud with isn’t listed, just click “Add website” and enter the information when prompted. The API ID and Key for that website will be assigned automatically. Please do not share them with anyone or use them for multiple URLs.
-	-	PHP version 5.0 or above. Most servers have a phpInfo file that displays this information.
-	-	SOAP and cUrl enabled. Again, the phpInfo file displays this information.
-	-	A USPS Web Tools Username. This allows TaxCloud to verify the customer’s address and obtain the 9-digit zip code. To get a USPS Web Tools Username, fill out the form at https://secure.shippingapis.com/registration/—your USPS Web Tools Username will be emailed to you. 
+1. A TaxCloud account. Register at [TaxClod . Log in to your account and enter your office address, website URL, and the states where you want to collect sales tax.
+2. TaxCloud API ID and API Key. These can be found in your TaxCloud account in the “Websites” page. If the website you want to use TaxCloud with isn’t listed, just click “Add website” and enter the information when prompted. The API ID and API Key for that website will be assigned automatically. Please do not share them with anyone or use them for multiple URLs.
+3. PHP version 5.0 or above. Most servers have a phpInfo file that displays this information.
+4. SOAP and cUrl enabled. Again, the phpInfo file displays this information.
+5. A USPS Web Tools Username. This allows TaxCloud to verify the customer’s address and obtain the 9-digit zip code. The importance of this last setting is minimal because TaxCloud suspended use of the USPS APIs because their servers had degraded availability.
 
-3	Installation
-Click "Download ZIP" to get the TaxCloud module. Be sure to back up your Zen Cart installation before you start making changes. Disable and remove any other sales tax modules before installing TaxCloud.
+##Installation##
+- 
+Dowload the contents of this repository.
+   Be sure to back up your Zen Cart installation before you start making changes. **Disable and remove any other sales tax modules before installing TaxCloud.
 
-Unzip TaxCloud files and upload them into the corresponding folders under the Zen Cart directory on your server. Note:  as a part of the Zen Cart installation you are prompted to rename the "admin" folder. Since we cannot predict how you will rename the admin folder you must copy the files from the TaxCloud "admin" folder over to your renamed folder.
-
-4	Configuration
+- download the Zen Cart directory on your server. Note:  as a part of the Zen Cart installation you are prompted to rename the "admin" folder. Since we cannot predict how you will rename the admin folder you must copy the files from the TaxCloud "admin" folder over to your renamed folder.
+##Configuration##
 Once the module is installed, log in to Zen Cart and navigate to Locations/Taxes > TaxCloud Tax Calculation. Select this menu item to go to the TaxCloud administration page.
 
 Click “Update” to configure your TaxCloud settings as follows:
-	-	API ID: Enter the API ID for your website (see Section 2, Preparation).
-	-	API Key: Enter the API Key for your website (see Section 2, Preparation).
+- API ID: Enter the API ID for your website (see Section 2, Preparation).
+- API Key: Enter the API Key for your website (see Section 2, Preparation).
 	-	USPS ID: Enter your USPS Web Tools Username (see Section 2, Preparation).
 	-	Store Street Address: Enter ONLY the first line of your business’s street address—for example, “100 Front Street.”
 	-	Store Zip Code: Enter your business’s 5-digit zip code. 
