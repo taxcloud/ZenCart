@@ -3,14 +3,20 @@
 [TaxCloud®](http so://TaxCloud.net) is a free, easy-to-use sales tax management service for retailers. Our free add-on module integrates with Zen Cart version 1.5 and above. This module overrides Zen Cart’s built-in tax calculation and replaces it with a real-time tax rate lookup.
 ##How TaxCloud works##
 After a customer has entered a shipping address during checkout, Zen Cart sends TaxCloud a request to calculate the sales tax due. TaxCloud returns that information to Zen Cart, and sales tax is added to the customer’s total. Once the order is completed, another request is sent to TaxCloud to capture the transaction. All the captured transactions are included in the report that TaxCloud provides at the end of each month.
-
 ##Preparation##
 Here’s what you’ll need:
-1. A TaxCloud account. Register at [TaxClod . Log in to your account and enter your office address, website URL, and the states where you want to collect sales tax.
-2. TaxCloud API ID and API Key. These can be found in your TaxCloud account in the “Websites” page. If the website you want to use TaxCloud with isn’t listed, just click “Add website” and enter the information when prompted. The API ID and API Key for that website will be assigned automatically. Please do not share them with anyone or use them for multiple URLs.
-3. PHP version 5.0 or above. Most servers have a phpInfo file that displays this information.
-4. SOAP and cUrl enabled. Again, the phpInfo file displays this information.
-5. A USPS Web Tools Username. This allows TaxCloud to verify the customer’s address and obtain the 9-digit zip code. The importance of this last setting is minimal because TaxCloud suspended use of the USPS APIs because their servers had degraded availability.
+1. [Register for your free TaxCloud account](https://taxcloud.net/account/register/).
+2. You will receive an email with a link to confirm creation of your new account, and set you account password.
+3. Nex, log into your new TaxCloud account and:
+  - Provide you company's basic information (Legal Name, Employer Identification Number, NAICS code, State of Incorporation) in the account Profile area
+  - Enter your office address in the [Locations area](https://taxcloud.net/account/locations/).
+  - Select any additional states where you want to collect sales tax in the [Tax States area](https://taxcloud.net/account/states/).
+4. Find your TaxCloud API ID and API Key in the [Websites area](https://taxcloud.net/account/websites/). Each website you setup in this area will have it's own unique API credentials, so you can have one production site (with live transactions), and other development and testing websites that are not live (thus, will not be included in your sales tax reports).
+![TaxCloud_Websites_APIcredentials.png](TaxCloud_Websites_APIcredentials.png "TaxCloud Websites Screenshot")
+*Note: API IDs and API Keys for each website are generated automatically. Please do not share them with anyone or use them for multiple URLs.*
+5. **This implementation requires PHP version 5.0 or above**. Most servers have a phpInfo file that displays the version of PHP in your environment.
+6. **SOAP and cUrl must be enabled**. Again, the phpInfo file will display this information.
+7. A USPS Web Tools Username. This allows TaxCloud to verify the customer’s address and obtain the 9-digit zip code. The importance of this last setting is minimal because TaxCloud suspended use of the USPS APIs because their servers had degraded reliability over the last few years.
 
 ##Installation##
 - Download the contents of this repository into a temporary directory on your server.
@@ -22,15 +28,15 @@ Here’s what you’ll need:
 Once the module is installed, log in to Zen Cart and navigate to Locations/Taxes >> TaxCloud Tax Calculation. Select this menu item to go to the TaxCloud administration page.
 
 Click “Update” to configure your TaxCloud settings as follows:
-- API ID: Enter the API ID for your website (see Section 2, Preparation).
-- API Key: Enter the API Key for your website (see Section 2, Preparation).
-- USPS ID: Enter your USPS Web Tools Username (see Section 2, Preparation).
-- Store Street Address: Enter ONLY the first line of your business’s street address—for example, “100 Front Street.”
-- Store Zip Code: Enter your business’s 5-digit zip code. 
-- TaxCloud enabled: Check this box to enable TaxCloud. If you later need to disable TaxCloud for any reason, simply uncheck this box.
+- **API ID**: Enter the API ID for your website (see above).
+- **API Key**: Enter the API Key for your website (see above).
+- USPS ID: As described above, TaxCloud no longer requires an actual USPS WebTools User ID. You can use a placeholder/fake USPS ID of '111CLOUD1111' to pass any syntax verifications.
+- **Store Street Address**: Enter ONLY the first line of your business’s street address—for example, “100 Front Street.”
+- **Store Zip Code**: Enter your business’s 5-digit zip code. 
+- **TaxCloud Eenabled**: Check this box to enable TaxCloud. If you later need to disable TaxCloud for any reason, simply uncheck this box.
 - Once you’ve entered this information, you should see this message “Server is configured to reach TaxCloud”.
 
-Additional Important Configuration: **States must be abbreviated**.
+**Important Configuration Change: States must be abbreviated**.
 This can be easily achieved by enabling "Show states as pulldown" - This will ensure that only a state's two-character abbreviation is sent to TaxCloud (if full state names are sent, then Pennsylvania will not exist, and Texas will become Tennessee). To set this Zen Cart setting:
 - In your Zen Cart Admin console, browse to Configuration >> Customers Details
 - Find the “State – Always display as pulldown?” and select “true”
@@ -73,9 +79,9 @@ Zen Cart includes a built-in module for managing coupons. Unfortunately this mod
 ----------------------------------------------------
 Provided by The Federal Tax Authority (FedTax.net)
 
-This code is released under the GNU GENERAL PUBLIC LICENSE (see license.txt)
+This code is released under the GNU GENERAL PUBLIC LICENSE (see [License](license.md))
 
-Copyright (c) 2009-2013 The Federal Tax Authority, LLC (FedTax). Information subject to change without notice.
+Copyright (c) 2015 The Federal Tax Authority, LLC (FedTax). Information subject to change without notice.
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation.
 
