@@ -64,6 +64,7 @@ We also provide support for Exemption Certificates. If the customer qualifies fo
 This functionality is available as an order total module. If you would like to use this module it will need to be enabled in your Zen Cart admin console.
 1. Go to Modules >> Order Total
 2. Select Exemption Certificates, and click the “Install” button.
+
 This will add a link to the checkout page that says “Are you exempt?” [See this example](http://taxcloud.net/imgs/cert_sample.html).
 
 ##Coupons##
