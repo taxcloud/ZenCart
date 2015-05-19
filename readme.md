@@ -30,7 +30,7 @@ Once the module is installed, log in to Zen Cart and navigate to Locations/Taxes
 Click “Update” to configure your TaxCloud settings as follows:
 - **API ID**: Enter the API ID for your website (see above).
 - **API Key**: Enter the API Key for your website (see above).
-- USPS ID: As described above, TaxCloud no longer requires an actual USPS WebTools User ID. You can use a placeholder/fake USPS ID of '111CLOUD1111' to pass any syntax verifications.
+- USPS ID: As described above, TaxCloud no longer requires an actual USPS WebTools User ID. You can use a placeholder/fake USPS ID of ''111CLOUD1111'' to pass any syntax verifications.
 - **Store Street Address**: Enter ONLY the first line of your business’s street address—for example, “100 Front Street.”
 - **Store Zip Code**: Enter your business’s 5-digit zip code. 
 - **TaxCloud Eenabled**: Check this box to enable TaxCloud. If you later need to disable TaxCloud for any reason, simply uncheck this box.
@@ -42,7 +42,7 @@ This can be easily achieved by enabling "Show states as pulldown". This ensures 
 - Find the “State – Always display as pulldown?” and select “true”
 
 ##Assigning Tax Classes##
-Each item in your store needs to be assigned a Taxability Information Code or TIC, so TaxCloud can determine whether or not that item is taxed in your customer’s state. These are stored in ZenCart using the “Tax Classes” section. You should set up at least the General Goods and Services tax class, TIC 00000, which is used to designate items that are taxable in every state. For the complete list of TICs, log in to TaxCloud and go to the “Taxability Codes” area.
+Each item in your store needs to be assigned a Taxability Information Code or TIC, so TaxCloud can determine whether or not that item is taxed in your customer’s state. These are stored in ZenCart using the “Tax Classes” section. You should set up at least the General Goods and Services tax class, TIC ''00000'', which is used to designate items that are taxable in every state. For the complete list of TICs with documentation, please see [https://taxcloud.net/tic/](https://taxcloud.net/tic/).
 
 To add a new tax class/TIC:
 1. In your Zen Cart Admin console, go to Locations/Taxes >> Tax Classes.
@@ -55,6 +55,11 @@ Once the TIC is created, go to your catalog and assign it to your products:
 2. Browse to the product you would like to edit.
 3. Select the appropriate tax class from the “Tax Class” drop-down.
 4. Save your changes.
+
+**Shipping Taxability Advisory**
+The appropriate Shipping charges TIC is usually ''11010'' if you are using a Real-Time-Shipping service and you **do not markup shipping**. However, if you charge flat-rate shipping, or markup your shipping cost such that you are charging your customers more than your actual shipping cost, you should use the Shipping & Handling TIC ''11000''.
+
+If you are manually configuring shipping, be sure you set the Tax Class to the appropriate TIC, and set the Tax Basis to "Shipping."
 
 ##Testing##
 Once you have completed these steps, try some test transactions to make sure everything is working correctly. Make sure to complete at least one test order. The test order must be purchased, it’s not enough to just add an item to your cart.
