@@ -106,7 +106,7 @@ This functionality is available as an order total module. If you would like to u
 
 This will add a link to the checkout page that says “Are you exempt?” [See this example](http://taxcloud.net/imgs/cert_sample.html).
 
-##Coupons##
+##Coupons & Discounts##
 Zen Cart includes a built-in module for managing coupons. Unfortunately this default coupon module does not handle coupons and sales tax correctly - it applies coupons *after* tax calculation, which is **incorrect.** This is because coupons and discounts affect the Sales Price (the legal term for the amount to be paid by the customer). Accordingly, sale tax calculation must be done **after** application of discounts or coupons. To solve this issue, we have provided a custom Discount Coupon module that replaces the standard one. If you are planning to use discount coupons on your site, you should **disable the standard Discount Coupon module** in the Zen Cart admin console by going to Modules >> Order Total. Then, select the TaxCloud version of Discount Coupon, and click the “Install” button.
 
 ----------------------------------------------------
