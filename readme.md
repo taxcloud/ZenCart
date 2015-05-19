@@ -34,10 +34,10 @@ Click “Update” to configure your TaxCloud settings as follows:
 - **Store Street Address**: Enter ONLY the first line of your business’s street address—for example, “100 Front Street.”
 - **Store Zip Code**: Enter your business’s 5-digit zip code. 
 - **TaxCloud Eenabled**: Check this box to enable TaxCloud. If you later need to disable TaxCloud for any reason, simply uncheck this box.
-- Once you’ve entered this information, you should see this message “Server is configured to reach TaxCloud”.
+Once you’ve entered this information, you should see this message “Server is configured to reach TaxCloud” - this means your ZenCart/PHP/SOAP/cUrl stack is fully functional, and your API ID and API Key are working.
 
-**Important Configuration Change: States must be abbreviated**.
-This can be easily achieved by enabling "Show states as pulldown" - This will ensure that only a state's two-character abbreviation is sent to TaxCloud (if full state names are sent, then Pennsylvania will not exist, and Texas will become Tennessee). To set this Zen Cart setting:
+**Important Configuration Setting: States must be abbreviated**.
+This can be easily achieved by enabling "Show states as pulldown". This ensures that only two-character abbreviations are sent to TaxCloud. If full state names are sent, then the state will be truncated to the first tow characters, which will cause lots of problems because Pennsylvania will not exist (PE), and Minnesota will seen as Michigan (MI). To set this Zen Cart setting:
 - In your Zen Cart Admin console, browse to Configuration >> Customers Details
 - Find the “State – Always display as pulldown?” and select “true”
 
@@ -77,9 +77,7 @@ This will add a link to the checkout page that says “Are you exempt?” [See t
 Zen Cart includes a built-in module for managing coupons. Unfortunately this module does not interact with TaxCloud correctly. So instead, we have provided a custom Discount Coupon module that replaces the standard one. If you are planning to use discount coupons on your site, you need to **disable the standard Discount Coupon module** in the Zen Cart admin console by going to Modules >> Order Total. Then, select the TaxCloud version of Discount Coupon, and click the “Install” button.
  
 ----------------------------------------------------
-Provided by The Federal Tax Authority (FedTax.net)
-
-This code is released under the GNU GENERAL PUBLIC LICENSE (see [License](license.md))
+This code is released under the GNU GENERAL PUBLIC LICENSE (see [License](LICENSE.md))
 
 Copyright (c) 2015 The Federal Tax Authority, LLC (FedTax). Information subject to change without notice.
 
