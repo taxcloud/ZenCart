@@ -388,12 +388,13 @@ class authorizenet_aim extends base {
       unset($submit_data['x_tax'], $submit_data['x_freight']);
     }
 
-    //TaxCloud fix for PayPal plugin
+    //TaxCloud fix for Authorize plugin
     $taxCloudTax = $_SESSION['taxcloudTaxTotal']; 
     if ( isset($taxCloudTax)) {
-    	$submit_data['x_tax']      = round($taxCloudTax,2);
+    	$old_tax = $submit_data['x_tax']; 
+    	$submit_data['x_tax'] = round($taxCloudTax,2);
        	//Update total
-        $submit_data['x_amount'] = $order->info['subtotal'] + $submit_data['x_freight'] + $taxCloudTax;
+        $submit_data['x_amount'] = $submit_data['x_amount'] - $old_tax + $submit_data['x_tax'];
     }
     //End TaxCloud fix
 
